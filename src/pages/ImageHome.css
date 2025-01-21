@@ -1,0 +1,95 @@
+.image-home-container {
+  max-width: 900px;
+  margin: 30px auto;
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+
+.form-area {
+  margin-bottom: 20px;
+}
+
+.form-area label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.labels-section {
+  margin-bottom: 20px;
+}
+
+.labels-section .label-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.color-box {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  margin-right: 6px;
+  border: 1px solid #ccc;
+}
+
+.label-list {
+  margin: 0; 
+  padding: 0;
+  list-style: none;
+}
+.label-list li {
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+
+.preview-item {
+  text-align: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 6px;
+  background: #f9f9f9;
+}
+
+.preview-item img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.buttons-row {
+  display: flex;
+  gap: 10px;
+}
+
+.buttons-row button {
+  padding: 8px 16px;
+  border: none;
+  background: #34495e;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.buttons-row button:hover {
+  background: #2c3e50;
+}
+
+.buttons-row button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
