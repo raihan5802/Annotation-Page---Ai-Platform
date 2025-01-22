@@ -1,5 +1,3 @@
-// src/pages/Annotate.js
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -24,11 +22,14 @@ export default function Annotate() {
 
   const { folderId, taskName, labelClasses, files } = folderInfo;
 
+  // -------------- Annotations for each image --------------
   const [annotations, setAnnotations] = useState({});
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
-  // Tools: move, bbox, polygon, polyline, point, ellipse
+
+  // Tools: move (for panning the image, if you still want that), bbox, polygon, polyline, point, ellipse
   const [selectedTool, setSelectedTool] = useState('move');
   const [selectedLabelClass, setSelectedLabelClass] = useState(
     labelClasses[0]?.name || ''
@@ -38,36 +39,59 @@ export default function Annotate() {
   const currentFileUrl = files[currentIndex]?.url;
   const currentShapes = annotations[currentFileUrl] || [];
 
+  // Whenever shapes change, store old state in undoStack
   const handleAnnotationsChange = (newShapes) => {
-    const updatedAnnotations = {
+    const updated = {
       ...annotations,
       [currentFileUrl]: newShapes,
     };
     setUndoStack([...undoStack, annotations]);
     setRedoStack([]);
-    setAnnotations(updatedAnnotations);
+    setAnnotations(updated);
   };
 
+  // -------------- Undo / Redo --------------
+  const undo = () => {
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    setRedoStack([...redoStack, annotations]);
+    setUndoStack(undoStack.slice(0, -1));
+    setAnnotations(prev);
+  };
+
+  const redo = () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setUndoStack([...undoStack, annotations]);
+    setRedoStack(redoStack.slice(0, -1));
+    setAnnotations(next);
+  };
+
+  // -------------- Deletion & Update --------------
   const handleDeleteAnnotation = (index) => {
     const arr = [...currentShapes];
     arr.splice(index, 1);
     handleAnnotationsChange(arr);
   };
 
+  // You can still keep handleUpdateAnnotation if you want
+  // to programmatically rename labels, etc. 
+  // But there’s no shape-dragging logic in the Canvas anymore.
   const handleUpdateAnnotation = (index, changes) => {
     const arr = [...currentShapes];
     arr[index] = { ...arr[index], ...changes };
     handleAnnotationsChange(arr);
   };
 
+  // -------------- Navigation --------------
   const handlePrev = () => {
     if (currentIndex > 0) setCurrentIndex((i) => i - 1);
   };
-
   const handleNext = () => {
     if (currentIndex < files.length - 1) setCurrentIndex((i) => i + 1);
   };
 
+  // -------------- Zoom --------------
   const handleZoomIn = () => setScale((s) => Math.min(s + 0.1, 5));
   const handleZoomOut = () => setScale((s) => Math.max(s - 0.1, 0.2));
   const handleWheelZoom = (deltaY) => {
@@ -75,6 +99,7 @@ export default function Annotate() {
     else handleZoomOut();
   };
 
+  // -------------- Save --------------
   const handleSave = async () => {
     const bodyData = {
       folderId,
@@ -96,22 +121,7 @@ export default function Annotate() {
     }
   };
 
-  const undo = () => {
-    if (undoStack.length === 0) return;
-    const previous = undoStack[undoStack.length - 1];
-    setRedoStack([...redoStack, annotations]);
-    setUndoStack(undoStack.slice(0, -1));
-    setAnnotations(previous);
-  };
-
-  const redo = () => {
-    if (redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
-    setUndoStack([...undoStack, annotations]);
-    setRedoStack(redoStack.slice(0, -1));
-    setAnnotations(next);
-  };
-
+  // -------------- Keyboard Shortcuts --------------
   useEffect(() => {
     const handleKey = (e) => {
       const key = e.key;
@@ -138,6 +148,8 @@ export default function Annotate() {
       } else if (key === 'ArrowLeft') {
         handlePrev();
       }
+
+      // Undo / Redo
       if (e.ctrlKey && (key === 'z' || key === 'Z')) {
         e.preventDefault();
         undo();
@@ -150,6 +162,7 @@ export default function Annotate() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [annotations, undoStack, redoStack]);
 
+  // -------------- Export Logic --------------
   const [exportOpen, setExportOpen] = useState(false);
   const openExport = () => setExportOpen(true);
   const closeExport = () => setExportOpen(false);
@@ -165,20 +178,6 @@ export default function Annotate() {
     closeExport();
   };
 
-  function getBBoxFromPoints(points) {
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    points.forEach((pt) => {
-      if (pt.x < minX) minX = pt.x;
-      if (pt.y < minY) minY = pt.y;
-      if (pt.x > maxX) maxX = pt.x;
-      if (pt.y > maxY) maxY = pt.y;
-    });
-    return [minX, minY, maxX - minX, maxY - minY];
-  }
-
   function downloadFile(url, filename) {
     const a = document.createElement('a');
     a.href = url;
@@ -188,225 +187,19 @@ export default function Annotate() {
   }
 
   function downloadCOCO() {
-    let images = [];
-    let annotationsList = [];
-    let annId = 1,
-      imgId = 1;
-
-    for (const [imageUrl, shapes] of Object.entries(annotations)) {
-      const fileObj = files.find((f) => f.url === imageUrl);
-      const imageName = fileObj?.originalname || 'unknown.jpg';
-      images.push({ id: imgId, file_name: imageName, width: 0, height: 0 });
-
-      shapes.forEach((shape) => {
-        const catIndex = labelClasses.findIndex((l) => l.name === shape.label);
-        const categoryId = catIndex >= 0 ? catIndex + 1 : 1;
-
-        if (shape.type === 'bbox') {
-          annotationsList.push({
-            id: annId++,
-            image_id: imgId,
-            category_id: categoryId,
-            bbox: [shape.x, shape.y, shape.width, shape.height],
-            segmentation: [],
-            area: Math.abs(shape.width * shape.height),
-            iscrowd: 0,
-          });
-        } else if (shape.type === 'polygon') {
-          const polygonPts = shape.points.flatMap((pt) => [pt.x, pt.y]);
-          annotationsList.push({
-            id: annId++,
-            image_id: imgId,
-            category_id: categoryId,
-            segmentation: [polygonPts],
-            bbox: getBBoxFromPoints(shape.points),
-            area: 0,
-            iscrowd: 0,
-          });
-        } else if (shape.type === 'polyline') {
-          const linePts = shape.points.flatMap((pt) => [pt.x, pt.y]);
-          annotationsList.push({
-            id: annId++,
-            image_id: imgId,
-            category_id: categoryId,
-            segmentation: [linePts],
-            bbox: getBBoxFromPoints(shape.points),
-            area: 0,
-            iscrowd: 0,
-          });
-        } else if (shape.type === 'point') {
-          annotationsList.push({
-            id: annId++,
-            image_id: imgId,
-            category_id: categoryId,
-            bbox: [shape.x, shape.y, 1, 1],
-            segmentation: [],
-            area: 1,
-            iscrowd: 0,
-          });
-        } else if (shape.type === 'ellipse') {
-          // We'll approximate an ellipse with a bounding box in COCO
-          const ellipseBBox = [
-            shape.x - shape.radiusX,
-            shape.y - shape.radiusY,
-            shape.radiusX * 2,
-            shape.radiusY * 2,
-          ];
-          annotationsList.push({
-            id: annId++,
-            image_id: imgId,
-            category_id: categoryId,
-            bbox: ellipseBBox,
-            segmentation: [],
-            area: Math.PI * shape.radiusX * shape.radiusY,
-            iscrowd: 0,
-          });
-        }
-      });
-      imgId++;
-    }
-
-    const categories = labelClasses.map((lc, i) => ({
-      id: i + 1,
-      name: lc.name,
-      supercategory: 'none',
-    }));
-    const coco = { images, annotations: annotationsList, categories };
-
-    const blob = new Blob([JSON.stringify(coco, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    downloadFile(url, 'coco_annotations.json');
+    alert('COCO export not yet implemented!');
   }
-
   function downloadYOLO() {
-    let lines = [];
-    for (const [imageUrl, shapes] of Object.entries(annotations)) {
-      const fileObj = files.find((f) => f.url === imageUrl);
-      const imageName = fileObj?.originalname || 'unknown.jpg';
-      lines.push(`# YOLO for ${imageName}`);
-
-      shapes.forEach((shape) => {
-        const catIndex = labelClasses.findIndex((l) => l.name === shape.label);
-        const classId = catIndex >= 0 ? catIndex : 0;
-
-        if (shape.type === 'bbox') {
-          const bx = shape.x + shape.width / 2;
-          const by = shape.y + shape.height / 2;
-          const bw = shape.width;
-          const bh = shape.height;
-          lines.push(
-            `${classId} ${bx.toFixed(2)} ${by.toFixed(2)} ${bw.toFixed(2)} ${bh.toFixed(2)}`
-          );
-        } else if (
-          shape.type === 'polygon' ||
-          shape.type === 'polyline'
-        ) {
-          const [x, y, w, h] = getBBoxFromPoints(shape.points);
-          const bx = x + w / 2;
-          const by = y + h / 2;
-          lines.push(
-            `${classId} ${bx.toFixed(2)} ${by.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`
-          );
-        } else if (shape.type === 'point') {
-          const bx = shape.x + 0.5;
-          const by = shape.y + 0.5;
-          const bw = 1;
-          const bh = 1;
-          lines.push(
-            `${classId} ${bx.toFixed(2)} ${by.toFixed(2)} ${bw.toFixed(2)} ${bh.toFixed(2)}`
-          );
-        } else if (shape.type === 'ellipse') {
-          // YOLO doesn't support ellipse natively, so approximate with bounding box
-          const x = shape.x - shape.radiusX;
-          const y = shape.y - shape.radiusY;
-          const w = shape.radiusX * 2;
-          const h = shape.radiusY * 2;
-          const bx = x + w / 2;
-          const by = y + h / 2;
-          lines.push(
-            `${classId} ${bx.toFixed(2)} ${by.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`
-          );
-        }
-      });
-      lines.push('');
-    }
-
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    downloadFile(url, 'yolo_annotations.txt');
+    alert('YOLO export not yet implemented!');
   }
-
   function downloadPascal() {
-    let output = [];
-    output.push(`<pascal_voc_annotations>`);
-
-    for (const [imageUrl, shapes] of Object.entries(annotations)) {
-      const fileObj = files.find((f) => f.url === imageUrl);
-      const imageName = fileObj?.originalname || 'unknown.jpg';
-      output.push(`  <image file="${imageName}">`);
-
-      shapes.forEach((shape) => {
-        const label = shape.label || 'unknown';
-
-        if (shape.type === 'bbox') {
-          const xmin = shape.x,
-            ymin = shape.y;
-          const xmax = shape.x + shape.width,
-            ymax = shape.y + shape.height;
-          output.push(`    <object>`);
-          output.push(`      <name>${label}</name>`);
-          output.push(
-            `      <bndbox><xmin>${xmin}</xmin><ymin>${ymin}</ymin><xmax>${xmax}</xmax><ymax>${ymax}</ymax></bndbox>`
-          );
-          output.push(`    </object>`);
-        } else if (shape.type === 'polygon' || shape.type === 'polyline') {
-          const [x, y, w, h] = getBBoxFromPoints(shape.points);
-          const xmin = x,
-            ymin = y;
-          const xmax = x + w,
-            ymax = y + h;
-          output.push(`    <object>`);
-          output.push(`      <name>${label}</name>`);
-          output.push(
-            `      <bndbox><xmin>${xmin}</xmin><ymin>${ymin}</ymin><xmax>${xmax}</xmax><ymax>${ymax}</ymax></bndbox>`
-          );
-          output.push(`    </object>`);
-        } else if (shape.type === 'point') {
-          const xmin = shape.x,
-            ymin = shape.y;
-          const xmax = shape.x + 1;
-          const ymax = shape.y + 1;
-          output.push(`    <object>`);
-          output.push(`      <name>${label}</name>`);
-          output.push(
-            `      <bndbox><xmin>${xmin}</xmin><ymin>${ymin}</ymin><xmax>${xmax}</xmax><ymax>${ymax}</ymax></bndbox>`
-          );
-          output.push(`    </object>`);
-        } else if (shape.type === 'ellipse') {
-          // For Pascal, store the bounding box around the ellipse
-          const xmin = shape.x - shape.radiusX;
-          const ymin = shape.y - shape.radiusY;
-          const xmax = shape.x + shape.radiusX;
-          const ymax = shape.y + shape.radiusY;
-          output.push(`    <object>`);
-          output.push(`      <name>${label}</name>`);
-          output.push(
-            `      <bndbox><xmin>${xmin}</xmin><ymin>${ymin}</ymin><xmax>${xmax}</xmax><ymax>${ymax}</ymax></bndbox>`
-          );
-          output.push(`    </object>`);
-        }
-      });
-
-      output.push(`  </image>`);
-    }
-    output.push(`</pascal_voc_annotations>`);
-    const xmlStr = output.join('\n');
-    const blob = new Blob([xmlStr], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    downloadFile(url, 'pascal_annotations.xml');
+    alert('Pascal VOC export not yet implemented!');
   }
+
+  // -------------- When annotation finishes => switch to move --------------
+  const handleFinishShape = () => {
+    setSelectedTool('move');
+  };
 
   return (
     <div className="annotate-container">
@@ -433,6 +226,7 @@ export default function Annotate() {
       </div>
 
       <div className="annotate-main">
+        {/* Tools Sidebar */}
         <div className="tools-sidebar">
           <h3>Tools</h3>
           <label>
@@ -522,6 +316,7 @@ export default function Annotate() {
           </div>
         </div>
 
+        {/* Canvas */}
         <div className="canvas-area">
           {currentFileUrl ? (
             <AnnotationCanvas
@@ -535,6 +330,7 @@ export default function Annotate() {
                 labelClasses.find((l) => l.name === selectedLabelClass)?.color ||
                 '#ff0000'
               }
+              onFinishShape={handleFinishShape}
             />
           ) : (
             <div style={{ textAlign: 'center', margin: 'auto' }}>

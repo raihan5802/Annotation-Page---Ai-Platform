@@ -1,5 +1,3 @@
-// src/components/AnnotationCanvas.js
-
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Stage,
@@ -10,7 +8,8 @@ import {
   Line,
   Circle,
   Ellipse,
-  Transformer
+  Arrow,
+  // REMOVED Transformer,
 } from 'react-konva';
 import './AnnotationCanvas.css';
 
@@ -18,37 +17,36 @@ export default function AnnotationCanvas({
   fileUrl,
   annotations,
   onAnnotationsChange,
-  selectedTool, // move, bbox, polygon, polyline, point, ellipse
+  selectedTool, // 'move', 'bbox', 'polygon', 'polyline', 'point', 'ellipse'
   scale,
   onWheelZoom,
-  activeLabelColor
+  activeLabelColor,
+  onFinishShape,
 }) {
   const stageRef = useRef(null);
   const containerRef = useRef(null);
 
-  const rectRefs = useRef([]);
-  const ellipseRefs = useRef([]);
-  const transformerRef = useRef(null);
+  // REMOVED references for bounding box / ellipse transforms
+  // const rectRefs = useRef([]);
+  // const ellipseRefs = useRef([]);
+  // const transformerRef = useRef(null);
 
-  const [selectedShapeIndex, setSelectedShapeIndex] = useState(null);
+  // REMOVED selectedShapeIndex
+  // const [selectedShapeIndex, setSelectedShapeIndex] = useState(null);
+
   const [dims, setDims] = useState({ width: 0, height: 0 });
   const [konvaImg, setKonvaImg] = useState(null);
   const [imagePos, setImagePos] = useState({ x: 0, y: 0 });
 
-  // BBox
+  // In-progress shapes
   const [newBox, setNewBox] = useState(null);
-
-  // Polygon
   const [tempPoints, setTempPoints] = useState([]);
   const [drawingPolygon, setDrawingPolygon] = useState(false);
-
-  // Polyline
   const [tempPolyline, setTempPolyline] = useState([]);
   const [drawingPolyline, setDrawingPolyline] = useState(false);
-
-  // Ellipse
   const [newEllipse, setNewEllipse] = useState(null);
 
+  // ------------------ Setup/Resize the Canvas ------------------
   useEffect(() => {
     const handleResize = () => {
       if (containerRef.current) {
@@ -63,25 +61,72 @@ export default function AnnotationCanvas({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ------------------ Load the Image ------------------
   useEffect(() => {
     if (!fileUrl) return;
     const img = new Image();
     img.src = fileUrl;
     img.onload = () => {
       setKonvaImg(img);
-      setImagePos({ x: 0, y: 0 });
+      setImagePos({ x: 0, y: 0 }); // reset
     };
     img.onerror = () => console.error('Could not load image:', fileUrl);
   }, [fileUrl]);
 
+  // Flatten array of {x,y} => [x,y,x,y,...]
   const flattenPoints = (pts) => pts.flatMap((p) => [p.x, p.y]);
+
+  // Return { x1, y1, x2, y2 } bounding box for a shape
+  const shapeBoundingBox = (ann) => {
+    if (ann.type === 'bbox') {
+      return {
+        x1: ann.x,
+        y1: ann.y,
+        x2: ann.x + ann.width,
+        y2: ann.y + ann.height,
+      };
+    } else if (ann.type === 'ellipse') {
+      return {
+        x1: ann.x - ann.radiusX,
+        y1: ann.y - ann.radiusY,
+        x2: ann.x + ann.radiusX,
+        y2: ann.y + ann.radiusY,
+      };
+    } else if (ann.type === 'polygon' || ann.type === 'polyline') {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      ann.points.forEach((pt) => {
+        if (pt.x < minX) minX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y > maxY) maxY = pt.y;
+      });
+      return { x1: minX, y1: minY, x2: maxX, y2: maxY };
+    } else if (ann.type === 'point') {
+      return {
+        x1: ann.x,
+        y1: ann.y,
+        x2: ann.x,
+        y2: ann.y,
+      };
+    }
+    return null;
+  };
+
+  const isOutsideImage = (ann) => {
+    if (!konvaImg) return false;
+    const { x1, y1, x2, y2 } = shapeBoundingBox(ann);
+    if (x2 < 0 || x1 > konvaImg.width || y2 < 0 || y1 > konvaImg.height) {
+      return true;
+    }
+    return false;
+  };
 
   const getGroupPos = (evt) => {
     const group = stageRef.current?.findOne('#anno-group');
     return group ? group.getRelativePointerPosition() : null;
   };
 
-  // BBox
+  // ------------------ BBox ------------------
   const startBox = (pos) => {
     setNewBox({ x: pos.x, y: pos.y, width: 0, height: 0 });
   };
@@ -95,14 +140,15 @@ export default function AnnotationCanvas({
   };
   const finalizeBox = () => {
     if (!newBox) return;
-    onAnnotationsChange([
-      ...annotations,
-      { type: 'bbox', ...newBox, label: '' },
-    ]);
+    const newAnn = { type: 'bbox', ...newBox, label: '' };
+    if (!isOutsideImage(newAnn)) {
+      onAnnotationsChange([...annotations, newAnn]);
+    }
     setNewBox(null);
+    onFinishShape && onFinishShape();
   };
 
-  // Polygon
+  // ------------------ Polygon ------------------
   const addPolygonPoint = (pos) => {
     setTempPoints((prev) => [...prev, pos]);
     setDrawingPolygon(true);
@@ -112,16 +158,17 @@ export default function AnnotationCanvas({
   };
   const finalizePolygon = () => {
     if (tempPoints.length >= 3) {
-      onAnnotationsChange([
-        ...annotations,
-        { type: 'polygon', points: tempPoints, label: '' },
-      ]);
+      const newAnn = { type: 'polygon', points: tempPoints, label: '' };
+      if (!isOutsideImage(newAnn)) {
+        onAnnotationsChange([...annotations, newAnn]);
+      }
     }
     setTempPoints([]);
     setDrawingPolygon(false);
+    onFinishShape && onFinishShape();
   };
 
-  // Polyline
+  // ------------------ Polyline ------------------
   const addPolylinePoint = (pos) => {
     setTempPolyline((prev) => [...prev, pos]);
     setDrawingPolyline(true);
@@ -131,24 +178,26 @@ export default function AnnotationCanvas({
   };
   const finalizePolyline = () => {
     if (tempPolyline.length >= 2) {
-      onAnnotationsChange([
-        ...annotations,
-        { type: 'polyline', points: tempPolyline, label: '' },
-      ]);
+      const newAnn = { type: 'polyline', points: tempPolyline, label: '' };
+      if (!isOutsideImage(newAnn)) {
+        onAnnotationsChange([...annotations, newAnn]);
+      }
     }
     setTempPolyline([]);
     setDrawingPolyline(false);
+    onFinishShape && onFinishShape();
   };
 
-  // Point
+  // ------------------ Point ------------------
   const addPoint = (pos) => {
-    onAnnotationsChange([
-      ...annotations,
-      { type: 'point', x: pos.x, y: pos.y, label: '' },
-    ]);
+    const newAnn = { type: 'point', x: pos.x, y: pos.y, label: '' };
+    if (!isOutsideImage(newAnn)) {
+      onAnnotationsChange([...annotations, newAnn]);
+    }
+    onFinishShape && onFinishShape();
   };
 
-  // Ellipse
+  // ------------------ Ellipse ------------------
   const startEllipse = (pos) => {
     setNewEllipse({
       type: 'ellipse',
@@ -172,16 +221,23 @@ export default function AnnotationCanvas({
   };
   const finalizeEllipse = () => {
     if (!newEllipse) return;
-    onAnnotationsChange([...annotations, { ...newEllipse }]);
+    if (!isOutsideImage(newEllipse)) {
+      onAnnotationsChange([...annotations, { ...newEllipse }]);
+    }
     setNewEllipse(null);
+    onFinishShape && onFinishShape();
   };
 
-  // Mouse
+  // ------------------ Mouse Events ------------------
   const handleMouseDown = (evt) => {
-    if (selectedTool === 'move') return;
+    if (selectedTool === 'move') {
+      // Still allow panning the background if in 'move' mode
+      return;
+    }
     const pos = getGroupPos(evt);
     if (!pos) return;
-    setSelectedShapeIndex(null);
+
+    // We no longer do shape selection => removing setSelectedShapeIndex(null);
 
     if (selectedTool === 'bbox') {
       startBox(pos);
@@ -222,6 +278,7 @@ export default function AnnotationCanvas({
     }
   };
 
+  // -------------- ESC = Cancel shape --------------
   useEffect(() => {
     const onCancelAnnotation = () => {
       setNewBox(null);
@@ -235,123 +292,25 @@ export default function AnnotationCanvas({
     return () => window.removeEventListener('cancel-annotation', onCancelAnnotation);
   }, []);
 
+  // -------------- Wheel Zoom --------------
   const handleWheel = (evt) => {
     evt.evt.preventDefault();
     onWheelZoom(evt.evt.deltaY);
   };
 
-  useEffect(() => {
-    if (!transformerRef.current) return;
-    const transformer = transformerRef.current;
-    const shape = annotations[selectedShapeIndex];
-    if (selectedShapeIndex == null || !shape) {
-      transformer.nodes([]);
-      transformer.getLayer()?.batchDraw();
-      return;
-    }
+  // REMOVED entire Transformer logic
+  // (no selection, no shape transform)
 
-    if (shape.type === 'bbox') {
-      const rectNode = rectRefs.current[selectedShapeIndex];
-      if (rectNode) {
-        transformer.nodes([rectNode]);
-        // no rotation for bounding boxes
-        transformer.rotateEnabled(false);
-        transformer.getLayer().batchDraw();
-      }
-    } else if (shape.type === 'ellipse') {
-      const ellNode = ellipseRefs.current[selectedShapeIndex];
-      if (ellNode) {
-        transformer.nodes([ellNode]);
-        // rotation allowed for ellipse
-        transformer.rotateEnabled(true);
-        transformer.getLayer().batchDraw();
-      }
-    } else {
-      transformer.nodes([]);
-      transformer.getLayer()?.batchDraw();
-    }
-  }, [selectedShapeIndex, annotations]);
+  // -------------- Polygon / Polyline (No vertex dragging) --------------
+  // Instead of making each vertex draggable, we'll just display them.
 
-  const handleRectDragEnd = (index, e) => {
-    const { x, y } = e.target.position();
-    const updated = [...annotations];
-    updated[index] = { ...updated[index], x, y };
-    onAnnotationsChange(updated);
-  };
-  const handleRectTransformEnd = (index, e) => {
-    const node = e.target;
-    const { x, y } = node.position();
-    const width = node.width() * node.scaleX();
-    const height = node.height() * node.scaleY();
-    node.scaleX(1);
-    node.scaleY(1);
-    const updated = [...annotations];
-    updated[index] = { ...updated[index], x, y, width, height };
-    onAnnotationsChange(updated);
-  };
-
-  const handleEllipseDragEnd = (index, e) => {
-    const { x, y } = e.target.position();
-    const updated = [...annotations];
-    updated[index] = { ...updated[index], x, y };
-    onAnnotationsChange(updated);
-  };
-  const handleEllipseTransformEnd = (index, e) => {
-    const node = e.target;
-    const { x, y } = node.position();
-    // Konva Ellipse uses radius + scale
-    const scaleX = node.scaleX();
-    const scaleY = node.scaleY();
-    const updated = [...annotations];
-    updated[index] = {
-      ...updated[index],
-      x,
-      y,
-      radiusX: node.radiusX() * scaleX,
-      radiusY: node.radiusY() * scaleY,
-      rotation: node.rotation(),
-    };
-    node.scaleX(1);
-    node.scaleY(1);
-    onAnnotationsChange(updated);
-  };
-
-  function EditablePolygon({ ann, index, color, sc }) {
-    const groupRef = useRef(null);
-
-    const handleGroupDragEnd = (e) => {
-      const { x, y } = e.target.position();
-      const newPoints = ann.points.map((pt) => ({
-        x: pt.x + x,
-        y: pt.y + y,
-      }));
-      const updated = [...annotations];
-      updated[index] = { ...ann, points: newPoints };
-      onAnnotationsChange(updated);
-      e.target.position({ x: 0, y: 0 });
-    };
-
-    const handleVertexDragMove = (ptIdx, e2) => {
-      const { x, y } = e2.target.position();
-      const newPoints = [...ann.points];
-      newPoints[ptIdx] = { x, y };
-      const updated = [...annotations];
-      updated[index] = { ...ann, points: newPoints };
-      onAnnotationsChange(updated);
-    };
-
-    const handleClick = (evt) => {
-      evt.cancelBubble = true;
-      setSelectedShapeIndex(null);
-    };
+  function NonEditablePolygon({ ann, color, sc }) {
+    // We don't make it draggable; we only draw it.
+    const firstPt = ann.points[0];
+    const secondPt = ann.points[1] || { x: firstPt.x + 10, y: firstPt.y };
 
     return (
-      <Group
-        ref={groupRef}
-        draggable
-        onDragEnd={handleGroupDragEnd}
-        onClick={handleClick}
-      >
+      <Group>
         <Line
           points={flattenPoints(ann.points)}
           fill={color + '55'}
@@ -359,109 +318,50 @@ export default function AnnotationCanvas({
           strokeWidth={2 / sc}
           closed
         />
-        {ann.points.map((pt, i) => (
-          <Circle
-            key={i}
-            x={pt.x}
-            y={pt.y}
-            radius={6 / sc}
-            fill="#ffffff"
-            stroke={color}
-            strokeWidth={2 / sc}
-            draggable
-            onDragMove={(evt) => handleVertexDragMove(i, evt)}
-            onClick={(evt) => (evt.cancelBubble = true)}
-          />
-        ))}
+        {/* Arrow to show start */}
+        <Arrow
+          points={[secondPt.x, secondPt.y, firstPt.x, firstPt.y]}
+          fill={color}
+          stroke={color}
+          strokeWidth={2 / sc}
+          pointerLength={10 / sc}
+          pointerWidth={8 / sc}
+        />
       </Group>
     );
   }
 
-  function EditablePolyline({ ann, index, color, sc }) {
-    const groupRef = useRef(null);
-
-    const handleGroupDragEnd = (e) => {
-      const { x, y } = e.target.position();
-      const newPoints = ann.points.map((pt) => ({
-        x: pt.x + x,
-        y: pt.y + y,
-      }));
-      const updated = [...annotations];
-      updated[index] = { ...ann, points: newPoints };
-      onAnnotationsChange(updated);
-      e.target.position({ x: 0, y: 0 });
-    };
-
-    const handleVertexDragMove = (ptIdx, e2) => {
-      const { x, y } = e2.target.position();
-      const newPoints = [...ann.points];
-      newPoints[ptIdx] = { x, y };
-      const updated = [...annotations];
-      updated[index] = { ...ann, points: newPoints };
-      onAnnotationsChange(updated);
-    };
-
-    const handleClick = (evt) => {
-      evt.cancelBubble = true;
-      setSelectedShapeIndex(null);
-    };
+  function NonEditablePolyline({ ann, color, sc }) {
+    const firstPt = ann.points[0];
+    const secondPt = ann.points[1] || { x: firstPt.x + 10, y: firstPt.y };
 
     return (
-      <Group
-        ref={groupRef}
-        draggable
-        onDragEnd={handleGroupDragEnd}
-        onClick={handleClick}
-      >
+      <Group>
         <Line
           points={flattenPoints(ann.points)}
           stroke={color}
           strokeWidth={2 / sc}
           closed={false}
         />
-        {ann.points.map((pt, i) => (
-          <Circle
-            key={i}
-            x={pt.x}
-            y={pt.y}
-            radius={6 / sc}
-            fill="#ffffff"
-            stroke={color}
-            strokeWidth={2 / sc}
-            draggable
-            onDragMove={(evt) => handleVertexDragMove(i, evt)}
-            onClick={(evt) => (evt.cancelBubble = true)}
-          />
-        ))}
+        <Arrow
+          points={[secondPt.x, secondPt.y, firstPt.x, firstPt.y]}
+          fill={color}
+          stroke={color}
+          strokeWidth={2 / sc}
+          pointerLength={10 / sc}
+          pointerWidth={8 / sc}
+        />
       </Group>
     );
   }
 
-  function EditablePoint({ ann, index, color, sc }) {
-    const circleRef = useRef(null);
-
-    const handleDragEnd = (e) => {
-      const { x, y } = e.target.position();
-      const updated = [...annotations];
-      updated[index] = { ...ann, x, y };
-      onAnnotationsChange(updated);
-    };
-
-    const handleClick = (evt) => {
-      evt.cancelBubble = true;
-      setSelectedShapeIndex(null);
-    };
-
+  function NonEditablePoint({ ann, color, sc }) {
     return (
       <Circle
-        ref={circleRef}
         x={ann.x}
         y={ann.y}
         radius={6 / sc}
         fill={color}
-        draggable
-        onDragEnd={handleDragEnd}
-        onClick={handleClick}
       />
     );
   }
@@ -486,10 +386,11 @@ export default function AnnotationCanvas({
         <Layer>
           <Group
             id="anno-group"
-            draggable={selectedTool === 'move'}
+            draggable={selectedTool === 'move'} // allow panning if in move mode
             x={imagePos.x}
             y={imagePos.y}
             onDragEnd={(e) => {
+              // user moved the background image only
               setImagePos({ x: e.target.x(), y: e.target.y() });
             }}
           >
@@ -501,14 +402,12 @@ export default function AnnotationCanvas({
               />
             )}
 
+            {/* Render existing shapes (non-movable) */}
             {annotations.map((ann, i) => {
               if (ann.type === 'bbox') {
                 return (
                   <Rect
                     key={i}
-                    ref={(node) => {
-                      rectRefs.current[i] = node;
-                    }}
                     x={ann.x}
                     y={ann.y}
                     width={ann.width}
@@ -516,20 +415,12 @@ export default function AnnotationCanvas({
                     fill={fillColor}
                     stroke={activeLabelColor}
                     strokeWidth={2 / scale}
-                    draggable
-                    onClick={(evt) => {
-                      evt.cancelBubble = true;
-                      setSelectedShapeIndex(i);
-                    }}
-                    onDragEnd={(evt) => handleRectDragEnd(i, evt)}
-                    onTransformEnd={(evt) => handleRectTransformEnd(i, evt)}
                   />
                 );
               } else if (ann.type === 'polygon') {
                 return (
-                  <EditablePolygon
+                  <NonEditablePolygon
                     key={i}
-                    index={i}
                     ann={ann}
                     color={activeLabelColor}
                     sc={scale}
@@ -537,9 +428,8 @@ export default function AnnotationCanvas({
                 );
               } else if (ann.type === 'polyline') {
                 return (
-                  <EditablePolyline
+                  <NonEditablePolyline
                     key={i}
-                    index={i}
                     ann={ann}
                     color={activeLabelColor}
                     sc={scale}
@@ -547,9 +437,8 @@ export default function AnnotationCanvas({
                 );
               } else if (ann.type === 'point') {
                 return (
-                  <EditablePoint
+                  <NonEditablePoint
                     key={i}
-                    index={i}
                     ann={ann}
                     color={activeLabelColor}
                     sc={scale}
@@ -559,9 +448,6 @@ export default function AnnotationCanvas({
                 return (
                   <Ellipse
                     key={i}
-                    ref={(node) => {
-                      ellipseRefs.current[i] = node;
-                    }}
                     x={ann.x}
                     y={ann.y}
                     radiusX={ann.radiusX}
@@ -570,19 +456,13 @@ export default function AnnotationCanvas({
                     fill={fillColor}
                     stroke={activeLabelColor}
                     strokeWidth={2 / scale}
-                    draggable
-                    onClick={(evt) => {
-                      evt.cancelBubble = true;
-                      setSelectedShapeIndex(i);
-                    }}
-                    onDragEnd={(evt) => handleEllipseDragEnd(i, evt)}
-                    onTransformEnd={(evt) => handleEllipseTransformEnd(i, evt)}
                   />
                 );
               }
               return null;
             })}
 
+            {/* In-progress BBox */}
             {newBox && selectedTool === 'bbox' && (
               <Rect
                 x={newBox.x}
@@ -595,29 +475,28 @@ export default function AnnotationCanvas({
               />
             )}
 
-            {drawingPolygon &&
-              tempPoints.length > 1 &&
-              selectedTool === 'polygon' && (
-                <Line
-                  points={flattenPoints([...tempPoints, tempPoints[0]])}
-                  fill={fillColor}
-                  stroke={activeLabelColor}
-                  strokeWidth={2 / scale}
-                  closed
-                />
-              )}
+            {/* In-progress Polygon */}
+            {drawingPolygon && tempPoints.length > 1 && selectedTool === 'polygon' && (
+              <Line
+                points={flattenPoints([...tempPoints, tempPoints[0]])}
+                fill={fillColor}
+                stroke={activeLabelColor}
+                strokeWidth={2 / scale}
+                closed
+              />
+            )}
 
-            {drawingPolyline &&
-              tempPolyline.length > 1 &&
-              selectedTool === 'polyline' && (
-                <Line
-                  points={flattenPoints(tempPolyline)}
-                  stroke={activeLabelColor}
-                  strokeWidth={2 / scale}
-                  closed={false}
-                />
-              )}
+            {/* In-progress Polyline */}
+            {drawingPolyline && tempPolyline.length > 1 && selectedTool === 'polyline' && (
+              <Line
+                points={flattenPoints(tempPolyline)}
+                stroke={activeLabelColor}
+                strokeWidth={2 / scale}
+                closed={false}
+              />
+            )}
 
+            {/* In-progress Ellipse */}
             {newEllipse && selectedTool === 'ellipse' && (
               <Ellipse
                 x={newEllipse.x}
@@ -632,13 +511,7 @@ export default function AnnotationCanvas({
             )}
           </Group>
 
-          <Transformer
-            ref={transformerRef}
-            anchorCornerRadius={4}
-            anchorStroke="#00BCD4"
-            anchorFill="#00BCD4"
-            borderStroke="#00BCD4"
-          />
+          {/* REMOVED Transformer entirely */}
         </Layer>
       </Stage>
     </div>
