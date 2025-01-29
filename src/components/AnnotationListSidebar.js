@@ -1,28 +1,22 @@
-import React, { useState } from 'react';
+// AnnotationListSidebar.js
+
+import React from 'react';
 import './AnnotationListSidebar.css';
 
 export default function AnnotationListSidebar({
   annotations,
   onDeleteAnnotation,
   onUpdateAnnotation,
-  labelClasses
+  labelClasses,
 }) {
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [tempLabel, setTempLabel] = useState('');
-
-  const startEdit = (idx, label) => {
-    setEditingIndex(idx);
-    setTempLabel(label);
-  };
-
-  const saveEdit = (idx) => {
-    onUpdateAnnotation(idx, { label: tempLabel });
-    setEditingIndex(null);
-    setTempLabel('');
-  };
-
+  // Handle label dropdown changes for a specific annotation
   const handleLabelDropdown = (idx, newLabel) => {
-    onUpdateAnnotation(idx, { label: newLabel });
+    // Find the color corresponding to the newly selected label
+    const labelColor =
+      labelClasses.find((lc) => lc.name === newLabel)?.color || '#ff0000';
+
+    // Update both label & color
+    onUpdateAnnotation(idx, { label: newLabel, color: labelColor });
   };
 
   return (
@@ -30,44 +24,27 @@ export default function AnnotationListSidebar({
       <h3>Annotations</h3>
       {annotations.length === 0 && <p>No annotations yet.</p>}
       {annotations.map((ann, i) => {
-        const label = ann.label || 'unknown';
-        const isEditing = editingIndex === i;
+        // Use the annotation's own label (assigned at creation)
+        const label = ann.label || '';
 
         return (
           <div key={i} className="anno-item">
             <div>
-              <span className="shape-type">{ann.type.toUpperCase()}</span>
-              {' '}
-              {!isEditing ? (
-                <span className="shape-label">{label}</span>
-              ) : (
-                <input
-                  type="text"
-                  value={tempLabel}
-                  onChange={(e) => setTempLabel(e.target.value)}
-                  style={{ marginLeft: 6 }}
-                />
-              )}
+              <span className="shape-type">{ann.type.toUpperCase()}</span>{' '}
+              <span className="shape-label">{label}</span>
             </div>
             <div className="anno-actions">
-              {!isEditing ? (
-                <>
-                  <select
-                    value={label}
-                    onChange={(e) => handleLabelDropdown(i, e.target.value)}
-                  >
-                    {labelClasses.map((lc, idx) => (
-                      <option key={idx} value={lc.name}>
-                        {lc.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button onClick={() => startEdit(i, label)}>Edit</button>
-                  <button onClick={() => onDeleteAnnotation(i)}>Del</button>
-                </>
-              ) : (
-                <button onClick={() => saveEdit(i)}>Save</button>
-              )}
+              <select
+                value={label}
+                onChange={(e) => handleLabelDropdown(i, e.target.value)}
+              >
+                {labelClasses.map((lc, idx2) => (
+                  <option key={idx2} value={lc.name}>
+                    {lc.name}
+                  </option>
+                ))}
+              </select>
+              <button onClick={() => onDeleteAnnotation(i)}>Del</button>
             </div>
           </div>
         );

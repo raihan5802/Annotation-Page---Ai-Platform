@@ -26,10 +26,9 @@ export default function Annotate() {
   const [annotations, setAnnotations] = useState({});
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Tools: move (for panning the image, if you still want that), bbox, polygon, polyline, point, ellipse
+  // Tools: move, bbox, polygon, polyline, point, ellipse
   const [selectedTool, setSelectedTool] = useState('move');
   const [selectedLabelClass, setSelectedLabelClass] = useState(
     labelClasses[0]?.name || ''
@@ -74,9 +73,6 @@ export default function Annotate() {
     handleAnnotationsChange(arr);
   };
 
-  // You can still keep handleUpdateAnnotation if you want
-  // to programmatically rename labels, etc. 
-  // But there’s no shape-dragging logic in the Canvas anymore.
   const handleUpdateAnnotation = (index, changes) => {
     const arr = [...currentShapes];
     arr[index] = { ...arr[index], ...changes };
@@ -160,6 +156,7 @@ export default function Annotate() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
+    // eslint-disable-next-line
   }, [annotations, undoStack, redoStack]);
 
   // -------------- Export Logic --------------
@@ -237,7 +234,7 @@ export default function Annotate() {
               checked={selectedTool === 'move'}
               onChange={() => setSelectedTool('move')}
             />
-            Move (M)
+            <span className="tool-icon">👆</span> Move (M)
           </label>
           <label>
             <input
@@ -247,7 +244,7 @@ export default function Annotate() {
               checked={selectedTool === 'bbox'}
               onChange={() => setSelectedTool('bbox')}
             />
-            BBox (B)
+            <span className="tool-icon">⬛</span> BBox (B)
           </label>
           <label>
             <input
@@ -257,7 +254,7 @@ export default function Annotate() {
               checked={selectedTool === 'polygon'}
               onChange={() => setSelectedTool('polygon')}
             />
-            Polygon (P)
+            <span className="tool-icon">🔺</span> Polygon (P)
           </label>
           <label>
             <input
@@ -267,7 +264,7 @@ export default function Annotate() {
               checked={selectedTool === 'polyline'}
               onChange={() => setSelectedTool('polyline')}
             />
-            Polyline (L)
+            <span className="tool-icon">📈</span> Polyline (L)
           </label>
           <label>
             <input
@@ -277,7 +274,7 @@ export default function Annotate() {
               checked={selectedTool === 'point'}
               onChange={() => setSelectedTool('point')}
             />
-            Point (O)
+            <span className="tool-icon">📍</span> Point (O)
           </label>
           <label>
             <input
@@ -287,7 +284,7 @@ export default function Annotate() {
               checked={selectedTool === 'ellipse'}
               onChange={() => setSelectedTool('ellipse')}
             />
-            Ellipse (E)
+            <span className="tool-icon">⬭</span> Ellipse (E)
           </label>
 
           <h3 style={{ marginTop: 16 }}>Active Label</h3>
@@ -312,6 +309,8 @@ export default function Annotate() {
               <li>ArrowRight => Next image</li>
               <li>Ctrl+Z => Undo</li>
               <li>Ctrl+Y => Redo</li>
+              <li>Ctrl+C => Copy selected</li>
+              <li>Ctrl+V => Paste annotation</li>
             </ul>
           </div>
         </div>
@@ -326,11 +325,15 @@ export default function Annotate() {
               selectedTool={selectedTool}
               scale={scale}
               onWheelZoom={handleWheelZoom}
+              // Pass the color for the *currently* active label
               activeLabelColor={
                 labelClasses.find((l) => l.name === selectedLabelClass)?.color ||
                 '#ff0000'
               }
               onFinishShape={handleFinishShape}
+              onDeleteAnnotation={handleDeleteAnnotation}
+              activeLabel={selectedLabelClass}
+              labelClasses={labelClasses}
             />
           ) : (
             <div style={{ textAlign: 'center', margin: 'auto' }}>
