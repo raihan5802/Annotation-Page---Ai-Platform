@@ -28,8 +28,13 @@ export default function Annotate() {
   const [redoStack, setRedoStack] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Tools: move, bbox, polygon, polyline, point, ellipse
+  // Tools: move, bbox, polygon, polyline, point, ellipse, segmentation
+  // default to 'move'
   const [selectedTool, setSelectedTool] = useState('move');
+
+  // For “segmentation” specifically, we have a small dropdown (Instance, Semantic, Panoptic)
+  const [segmentationType, setSegmentationType] = useState('instance');
+
   const [selectedLabelClass, setSelectedLabelClass] = useState(
     labelClasses[0]?.name || ''
   );
@@ -121,6 +126,8 @@ export default function Annotate() {
   useEffect(() => {
     const handleKey = (e) => {
       const key = e.key;
+
+      // Tools
       if (key === 'm' || key === 'M') {
         setSelectedTool('move');
       } else if (key === 'b' || key === 'B') {
@@ -133,13 +140,24 @@ export default function Annotate() {
         setSelectedTool('point');
       } else if (key === 'e' || key === 'E') {
         setSelectedTool('ellipse');
-      } else if (key === 's' || key === 'S') {
+      }
+      // Segmentation on plain "S"
+      else if ((key === 's' || key === 'S') && e.ctrlKey) {
+        // Ctrl+S => Save
         e.preventDefault();
         handleSave();
-      } else if (key === 'Escape') {
+      } else if (key === 's' || key === 'S') {
+        // Just S => Segmentation
+        setSelectedTool('segmentation');
+      }
+
+      // Esc => cancel shape
+      if (key === 'Escape') {
         const event = new CustomEvent('cancel-annotation');
         window.dispatchEvent(event);
-      } else if (key === 'ArrowRight') {
+      }
+      // Next / Prev
+      if (key === 'ArrowRight') {
         handleNext();
       } else if (key === 'ArrowLeft') {
         handlePrev();
@@ -287,6 +305,33 @@ export default function Annotate() {
             <span className="tool-icon">⬭</span> Ellipse (E)
           </label>
 
+          {/* New Segmentation radio + dropdown */}
+          <label>
+            <input
+              type="radio"
+              name="tool"
+              value="segmentation"
+              checked={selectedTool === 'segmentation'}
+              onChange={() => setSelectedTool('segmentation')}
+            />
+            <span className="tool-icon">🎨</span> Segmentation (S)
+          </label>
+          {selectedTool === 'segmentation' && (
+            <div style={{ marginLeft: '20px', marginBottom: '8px' }}>
+              <label style={{ display: 'block', marginBottom: '4px' }}>
+                Type:
+              </label>
+              <select
+                value={segmentationType}
+                onChange={(e) => setSegmentationType(e.target.value)}
+              >
+                <option value="instance">Instance</option>
+                <option value="semantic">Semantic</option>
+                <option value="panoptic">Panoptic</option>
+              </select>
+            </div>
+          )}
+
           <h3 style={{ marginTop: 16 }}>Active Label</h3>
           <select
             value={selectedLabelClass}
@@ -303,7 +348,8 @@ export default function Annotate() {
             <p><strong>Shortcuts:</strong></p>
             <ul>
               <li>M/B/P/L/O/E => Tools</li>
-              <li>S => Save</li>
+              <li>S => Segmentation</li>
+              <li>Ctrl+S => Save</li>
               <li>Esc => Cancel shape</li>
               <li>ArrowLeft => Prev image</li>
               <li>ArrowRight => Next image</li>

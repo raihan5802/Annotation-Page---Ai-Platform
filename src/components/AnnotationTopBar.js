@@ -19,7 +19,8 @@ export default function AnnotationTopBar({
         <button onClick={onHome}>Home</button>
         <button onClick={onPrev} disabled={currentIndex <= 0}>Prev</button>
         <button onClick={onNext} disabled={currentIndex >= total - 1}>Next</button>
-        <button onClick={onSave}>Save (S)</button>
+        {/* Changed the label to indicate it's Ctrl+S instead of just S */}
+        <button onClick={onSave}>Save (Ctrl+S)</button>
         <button onClick={onExport}>Export</button>
       </div>
       <div className="middle-info">
