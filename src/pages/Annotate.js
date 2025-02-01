@@ -1,3 +1,4 @@
+// annotate.js
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -34,6 +35,9 @@ export default function Annotate() {
 
   // For “segmentation” specifically, we have a small dropdown (Instance, Semantic, Panoptic)
   const [segmentationType, setSegmentationType] = useState('instance');
+
+  // New state for panoptic segmentation option
+  const [panopticOption, setPanopticOption] = useState('instance');
 
   const [selectedLabelClass, setSelectedLabelClass] = useState(
     labelClasses[0]?.name || ''
@@ -121,6 +125,75 @@ export default function Annotate() {
       alert('Error saving');
     }
   };
+
+  // -------------- Fill Background Button --------------
+  const handleFillBackground = () => {
+    if (!currentFileUrl) return;
+    const img = new window.Image();
+    img.src = currentFileUrl;
+    img.onload = () => {
+      const width = img.width;
+      const height = img.height;
+      const bgAnn = computeBackgroundPolygon(width, height, currentShapes, labelClasses);
+      // Remove any existing background annotation (by label)
+      const newShapes = currentShapes.filter(ann => ann.label.toLowerCase() !== 'background');
+      newShapes.push(bgAnn);
+      handleAnnotationsChange(newShapes);
+    };
+  };
+
+  function computeBackgroundPolygon(imageWidth, imageHeight, shapes, labelClasses) {
+    const outer = [
+      { x: 0, y: 0 },
+      { x: imageWidth, y: 0 },
+      { x: imageWidth, y: imageHeight },
+      { x: 0, y: imageHeight },
+    ];
+    const holes = [];
+    shapes.forEach(ann => {
+      if (ann.type === 'bbox') {
+        const hole = [
+          { x: ann.x, y: ann.y },
+          { x: ann.x + ann.width, y: ann.y },
+          { x: ann.x + ann.width, y: ann.y + ann.height },
+          { x: ann.x, y: ann.y + ann.height },
+        ];
+        holes.push(hole);
+      } else if (ann.type === 'polygon') {
+        if (ann.label.toLowerCase() !== 'background') {
+          holes.push(ann.points);
+        }
+      } else if (ann.type === 'ellipse') {
+        const hole = [];
+        const numPoints = 20;
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (2 * Math.PI * i) / numPoints;
+          const x = ann.x + ann.radiusX * Math.cos(angle);
+          const y = ann.y + ann.radiusY * Math.sin(angle);
+          hole.push({ x, y });
+        }
+        holes.push(hole);
+      }
+    });
+    let bgColor = '#000000';
+    if (
+      labelClasses &&
+      labelClasses.some(
+        (lc) =>
+          lc.color.toLowerCase() === '#000000' &&
+          lc.name.toLowerCase() !== 'background'
+      )
+    ) {
+      bgColor = '#010101';
+    }
+    return {
+      type: 'polygon',
+      points: outer,
+      holes: holes,
+      label: 'background',
+      color: bgColor,
+    };
+  }
 
   // -------------- Keyboard Shortcuts --------------
   useEffect(() => {
@@ -238,6 +311,9 @@ export default function Annotate() {
         <button onClick={redo} style={{ marginRight: '8px' }}>
           Redo (Ctrl+Y)
         </button>
+        <button onClick={handleFillBackground} style={{ marginRight: '8px' }}>
+          Fill Background
+        </button>
       </div>
 
       <div className="annotate-main">
@@ -305,7 +381,7 @@ export default function Annotate() {
             <span className="tool-icon">⬭</span> Ellipse (E)
           </label>
 
-          {/* New Segmentation radio + dropdown */}
+          {/* Segmentation */}
           <label>
             <input
               type="radio"
@@ -329,6 +405,30 @@ export default function Annotate() {
                 <option value="semantic">Semantic</option>
                 <option value="panoptic">Panoptic</option>
               </select>
+            </div>
+          )}
+          {selectedTool === 'segmentation' && segmentationType === 'panoptic' && (
+            <div style={{ marginLeft: '20px', marginBottom: '8px' }}>
+              <label>
+                <input
+                  type="radio"
+                  name="panopticOption"
+                  value="instance"
+                  checked={panopticOption === 'instance'}
+                  onChange={() => setPanopticOption('instance')}
+                />
+                Instance
+              </label>
+              <label style={{ marginLeft: '8px' }}>
+                <input
+                  type="radio"
+                  name="panopticOption"
+                  value="semantic"
+                  checked={panopticOption === 'semantic'}
+                  onChange={() => setPanopticOption('semantic')}
+                />
+                Semantic
+              </label>
             </div>
           )}
 
@@ -371,7 +471,6 @@ export default function Annotate() {
               selectedTool={selectedTool}
               scale={scale}
               onWheelZoom={handleWheelZoom}
-              // Pass the color for the *currently* active label
               activeLabelColor={
                 labelClasses.find((l) => l.name === selectedLabelClass)?.color ||
                 '#ff0000'
@@ -380,6 +479,9 @@ export default function Annotate() {
               onDeleteAnnotation={handleDeleteAnnotation}
               activeLabel={selectedLabelClass}
               labelClasses={labelClasses}
+              // Pass segmentationType and panopticOption to the canvas
+              segmentationType={segmentationType}
+              panopticOption={panopticOption}
             />
           ) : (
             <div style={{ textAlign: 'center', margin: 'auto' }}>

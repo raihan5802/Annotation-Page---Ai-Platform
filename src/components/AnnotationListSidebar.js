@@ -11,11 +11,9 @@ export default function AnnotationListSidebar({
 }) {
   // Handle label dropdown changes for a specific annotation
   const handleLabelDropdown = (idx, newLabel) => {
-    // Find the color corresponding to the newly selected label
     const labelColor =
       labelClasses.find((lc) => lc.name === newLabel)?.color || '#ff0000';
 
-    // Update both label & color
     onUpdateAnnotation(idx, { label: newLabel, color: labelColor });
   };
 
@@ -24,14 +22,15 @@ export default function AnnotationListSidebar({
       <h3>Annotations</h3>
       {annotations.length === 0 && <p>No annotations yet.</p>}
       {annotations.map((ann, i) => {
-        // Use the annotation's own label (assigned at creation)
         const label = ann.label || '';
-
         return (
           <div key={i} className="anno-item">
             <div>
               <span className="shape-type">{ann.type.toUpperCase()}</span>{' '}
               <span className="shape-label">{label}</span>
+              {ann.instanceId && (
+                <span style={{ marginLeft: 8 }}>({ann.instanceId})</span>
+              )}
             </div>
             <div className="anno-actions">
               <select
