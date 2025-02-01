@@ -14,7 +14,7 @@ import {
   Label,
   Tag,
   Text,
-  Path
+  Path,
 } from 'react-konva';
 import './AnnotationCanvas.css';
 
@@ -31,7 +31,7 @@ function polygonToPath(outer, holes) {
   }
   path += 'Z ';
   if (holes && holes.length > 0) {
-    holes.forEach(hole => {
+    holes.forEach((hole) => {
       if (hole.length > 0) {
         path += 'M ' + hole[0].x + ' ' + hole[0].y + ' ';
         for (let i = 1; i < hole.length; i++) {
@@ -56,8 +56,6 @@ export default function AnnotationCanvas({
   onFinishShape,
   onDeleteAnnotation,
   activeLabel,
-  segmentationType,
-  panopticOption, // new prop for panoptic segmentation
 }) {
   const stageRef = useRef(null);
   const containerRef = useRef(null);
@@ -80,14 +78,6 @@ export default function AnnotationCanvas({
   const [tempPointPoints, setTempPointPoints] = useState([]);
   const [drawingPoint, setDrawingPoint] = useState(false);
 
-  // Instance segmentation polygon
-  const [tempInstancePoints, setTempInstancePoints] = useState([]);
-  const [drawingInstancePolygon, setDrawingInstancePolygon] = useState(false);
-
-  // **NEW**: Semantic segmentation polygon
-  const [tempSemanticPoints, setTempSemanticPoints] = useState([]);
-  const [drawingSemanticPolygon, setDrawingSemanticPolygon] = useState(false);
-
   // For selecting shape to transform (only for bbox, ellipse)
   const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
   const transformerRef = useRef(null);
@@ -101,9 +91,6 @@ export default function AnnotationCanvas({
 
   // For copy/paste
   const [copiedAnnotation, setCopiedAnnotation] = useState(null);
-
-  // Instance counters for instance segmentation
-  const [instanceCounters, setInstanceCounters] = useState({});
 
   // ----------- Window / container sizing -----------
   useEffect(() => {
@@ -131,9 +118,6 @@ export default function AnnotationCanvas({
     img.onerror = () => console.error('Could not load image:', fileUrl);
   }, [fileUrl]);
 
-  // ----------- Flatten points helper -----------
-  // (Already defined above as flattenPoints)
-
   // ----------- Color shading for instance polygons -----------
   function shadeColor(col, amt) {
     let usePound = false;
@@ -150,9 +134,12 @@ export default function AnnotationCanvas({
     G = Math.min(255, Math.max(0, G + amt));
     B = Math.min(255, Math.max(0, B + amt));
 
-    const RR = (R.toString(16).length === 1) ? '0' + R.toString(16) : R.toString(16);
-    const GG = (G.toString(16).length === 1) ? '0' + G.toString(16) : G.toString(16);
-    const BB = (B.toString(16).length === 1) ? '0' + B.toString(16) : B.toString(16);
+    const RR =
+      R.toString(16).length === 1 ? '0' + R.toString(16) : R.toString(16);
+    const GG =
+      G.toString(16).length === 1 ? '0' + G.toString(16) : G.toString(16);
+    const BB =
+      B.toString(16).length === 1 ? '0' + B.toString(16) : B.toString(16);
 
     return (usePound ? '#' : '') + RR + GG + BB;
   }
@@ -669,87 +656,6 @@ export default function AnnotationCanvas({
     onFinishShape && onFinishShape();
   }
 
-  // ----------- Creating Instance Segmentation Polygon -----------
-  function addInstancePolygonPoint(pos) {
-    setTempInstancePoints((prev) => [...prev, pos]);
-    setDrawingInstancePolygon(true);
-  }
-  function finalizeInstancePolygon() {
-    if (tempInstancePoints.length >= 3) {
-      let newAnn = {
-        type: 'polygon',
-        points: tempInstancePoints,
-        label: activeLabel,
-      };
-
-      // Assign instance ID and color variation
-      const labelKey = activeLabel || 'unknown';
-      const currentCount = instanceCounters[labelKey] || 0;
-      const newCount = currentCount + 1;
-      const instanceId = labelKey + '-' + newCount;
-
-      // negative offset to ensure color changes even for #ff0000
-      const offset = -(newCount - 1) * 50;
-      const instanceColor = shadeColor(activeLabelColor, offset);
-
-      newAnn.instanceId = instanceId;
-      newAnn.color = instanceColor;
-
-      setInstanceCounters({
-        ...instanceCounters,
-        [labelKey]: newCount,
-      });
-
-      if (konvaImg) {
-        const clipped = clipAnnotationToBoundary(
-          newAnn,
-          konvaImg.width,
-          konvaImg.height
-        );
-        if (clipped) {
-          onAnnotationsChange([...annotations, clipped]);
-        }
-      } else {
-        onAnnotationsChange([...annotations, newAnn]);
-      }
-    }
-    setTempInstancePoints([]);
-    setDrawingInstancePolygon(false);
-    onFinishShape && onFinishShape();
-  }
-
-  // ----------- Creating Semantic Segmentation Polygon -----------
-  function addSemanticPolygonPoint(pos) {
-    setTempSemanticPoints((prev) => [...prev, pos]);
-    setDrawingSemanticPolygon(true);
-  }
-  function finalizeSemanticPolygon() {
-    if (tempSemanticPoints.length >= 3) {
-      // No instance logic here; all polygons for a given label share same color
-      const newAnn = {
-        type: 'polygon',
-        points: tempSemanticPoints,
-        label: activeLabel,
-        color: activeLabelColor, // all polygons for that label share the same color
-      };
-      if (konvaImg) {
-        const clipped = clipAnnotationToBoundary(
-          newAnn,
-          konvaImg.width,
-          konvaImg.height
-        );
-        if (clipped) {
-          onAnnotationsChange([...annotations, clipped]);
-        }
-      } else {
-        onAnnotationsChange([...annotations, newAnn]);
-      }
-    }
-    setTempSemanticPoints([]);
-    setDrawingSemanticPolygon(false);
-    onFinishShape && onFinishShape();
-  }
-
   // ----------- Cancel shape on ESC -----------
   useEffect(() => {
     const onCancelAnnotation = () => {
@@ -761,11 +667,6 @@ export default function AnnotationCanvas({
       setNewEllipse(null);
       setTempPointPoints([]);
       setDrawingPoint(false);
-      setTempInstancePoints([]);
-      setDrawingInstancePolygon(false);
-      // Also clear any semantic in-progress polygon
-      setTempSemanticPoints([]);
-      setDrawingSemanticPolygon(false);
     };
     window.addEventListener('cancel-annotation', onCancelAnnotation);
     return () =>
@@ -801,44 +702,6 @@ export default function AnnotationCanvas({
     ) {
       setTempPointPoints((prev) => prev.slice(0, -1));
     }
-    // instance
-    else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'instance' &&
-      drawingInstancePolygon &&
-      tempInstancePoints.length > 0
-    ) {
-      setTempInstancePoints((prev) => prev.slice(0, -1));
-    }
-    // semantic
-    else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'semantic' &&
-      drawingSemanticPolygon &&
-      tempSemanticPoints.length > 0
-    ) {
-      setTempSemanticPoints((prev) => prev.slice(0, -1));
-    }
-    // panoptic - instance
-    else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'panoptic' &&
-      panopticOption === 'instance' &&
-      drawingInstancePolygon &&
-      tempInstancePoints.length > 0
-    ) {
-      setTempInstancePoints((prev) => prev.slice(0, -1));
-    }
-    // panoptic - semantic
-    else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'panoptic' &&
-      panopticOption === 'semantic' &&
-      drawingSemanticPolygon &&
-      tempSemanticPoints.length > 0
-    ) {
-      setTempSemanticPoints((prev) => prev.slice(0, -1));
-    }
   }
 
   // ----------- Mouse events for shape creation -----------
@@ -855,10 +718,7 @@ export default function AnnotationCanvas({
     const usesDoubleClick =
       selectedTool === 'polygon' ||
       selectedTool === 'polyline' ||
-      selectedTool === 'point' ||
-      (selectedTool === 'segmentation' && segmentationType === 'instance') ||
-      (selectedTool === 'segmentation' && segmentationType === 'semantic') ||
-      (selectedTool === 'segmentation' && segmentationType === 'panoptic');
+      selectedTool === 'point';
 
     if (usesDoubleClick && delta < doubleClickThreshold) {
       return; // double-click => handled in handleDblClick
@@ -875,25 +735,6 @@ export default function AnnotationCanvas({
       addPointToPoints(pos);
     } else if (selectedTool === 'ellipse') {
       startEllipse(pos);
-    } else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'instance'
-    ) {
-      addInstancePolygonPoint(pos);
-    } else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'semantic'
-    ) {
-      addSemanticPolygonPoint(pos);
-    } else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'panoptic'
-    ) {
-      if (panopticOption === 'instance') {
-        addInstancePolygonPoint(pos);
-      } else if (panopticOption === 'semantic') {
-        addSemanticPolygonPoint(pos);
-      }
     }
   }
 
@@ -922,27 +763,6 @@ export default function AnnotationCanvas({
       finalizePolyline();
     } else if (selectedTool === 'point' && drawingPoint) {
       finalizePoint();
-    } else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'instance' &&
-      drawingInstancePolygon
-    ) {
-      finalizeInstancePolygon();
-    } else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'semantic' &&
-      drawingSemanticPolygon
-    ) {
-      finalizeSemanticPolygon();
-    } else if (
-      selectedTool === 'segmentation' &&
-      segmentationType === 'panoptic'
-    ) {
-      if (panopticOption === 'instance' && drawingInstancePolygon) {
-        finalizeInstancePolygon();
-      } else if (panopticOption === 'semantic' && drawingSemanticPolygon) {
-        finalizeSemanticPolygon();
-      }
     }
   }
 
@@ -1000,48 +820,6 @@ export default function AnnotationCanvas({
           e.preventDefault();
           setTempPointPoints((prev) => prev.slice(0, -1));
         }
-        // Instance
-        else if (
-          selectedTool === 'segmentation' &&
-          segmentationType === 'instance' &&
-          drawingInstancePolygon &&
-          tempInstancePoints.length > 0
-        ) {
-          e.preventDefault();
-          setTempInstancePoints((prev) => prev.slice(0, -1));
-        }
-        // Semantic
-        else if (
-          selectedTool === 'segmentation' &&
-          segmentationType === 'semantic' &&
-          drawingSemanticPolygon &&
-          tempSemanticPoints.length > 0
-        ) {
-          e.preventDefault();
-          setTempSemanticPoints((prev) => prev.slice(0, -1));
-        }
-        // Panoptic - instance
-        else if (
-          selectedTool === 'segmentation' &&
-          segmentationType === 'panoptic' &&
-          panopticOption === 'instance' &&
-          drawingInstancePolygon &&
-          tempInstancePoints.length > 0
-        ) {
-          e.preventDefault();
-          setTempInstancePoints((prev) => prev.slice(0, -1));
-        }
-        // Panoptic - semantic
-        else if (
-          selectedTool === 'segmentation' &&
-          segmentationType === 'panoptic' &&
-          panopticOption === 'semantic' &&
-          drawingSemanticPolygon &&
-          tempSemanticPoints.length > 0
-        ) {
-          e.preventDefault();
-          setTempSemanticPoints((prev) => prev.slice(0, -1));
-        }
       }
     };
 
@@ -1056,15 +834,9 @@ export default function AnnotationCanvas({
     drawingPolygon,
     drawingPolyline,
     drawingPoint,
-    drawingInstancePolygon,
     tempPoints,
     tempPolyline,
     tempPointPoints,
-    tempInstancePoints,
-    drawingSemanticPolygon,
-    tempSemanticPoints,
-    segmentationType,
-    panopticOption
   ]);
 
   // ----------- Draggable logic for entire shapes -----------
@@ -1093,7 +865,10 @@ export default function AnnotationCanvas({
     const updated = [...annotations];
     updated[index] = { ...updated[index], x, y };
 
-    if (konvaImg && isPartiallyOutside(updated[index], konvaImg.width, konvaImg.height)) {
+    if (
+      konvaImg &&
+      isPartiallyOutside(updated[index], konvaImg.width, konvaImg.height)
+    ) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
         konvaImg.width,
@@ -1245,39 +1020,15 @@ export default function AnnotationCanvas({
     updated[annIndex] = { ...updated[annIndex], points: shapePoints };
 
     if (konvaImg) {
-      if (updated[annIndex].type === 'polygon') {
-        const clipped = clipAnnotationToBoundary(
-          updated[annIndex],
-          konvaImg.width,
-          konvaImg.height
-        );
-        if (!clipped) {
-          updated.splice(annIndex, 1);
-        } else {
-          updated[annIndex] = clipped;
-        }
-      } else if (updated[annIndex].type === 'polyline') {
-        const clipped = clipAnnotationToBoundary(
-          updated[annIndex],
-          konvaImg.width,
-          konvaImg.height
-        );
-        if (!clipped) {
-          updated.splice(annIndex, 1);
-        } else {
-          updated[annIndex] = clipped;
-        }
+      const clipped = clipAnnotationToBoundary(
+        updated[annIndex],
+        konvaImg.width,
+        konvaImg.height
+      );
+      if (!clipped) {
+        updated.splice(annIndex, 1);
       } else {
-        const clipped = clipAnnotationToBoundary(
-          updated[annIndex],
-          konvaImg.width,
-          konvaImg.height
-        );
-        if (!clipped) {
-          updated.splice(annIndex, 1);
-        } else {
-          updated[annIndex] = clipped;
-        }
+        updated[annIndex] = clipped;
       }
     }
     onAnnotationsChange(updated);
@@ -1638,14 +1389,6 @@ export default function AnnotationCanvas({
                           />
                         ))}
                       </Group>
-                      {ann.instanceId && (
-                        <InstanceIdLabel
-                          annotation={ann}
-                          scale={scale}
-                          shapeBoundingBox={shapeBoundingBox}
-                          color={annColor}
-                        />
-                      )}
                       {selectedAnnotationIndex === i && (
                         <>
                           <DeleteLabel
@@ -1719,14 +1462,6 @@ export default function AnnotationCanvas({
                           pointerWidth={8 / scale}
                         />
                       </Group>
-                      {ann.instanceId && (
-                        <InstanceIdLabel
-                          annotation={ann}
-                          scale={scale}
-                          shapeBoundingBox={shapeBoundingBox}
-                          color={annColor}
-                        />
-                      )}
                       {selectedAnnotationIndex === i && (
                         <>
                           <DeleteLabel
@@ -1887,132 +1622,6 @@ export default function AnnotationCanvas({
                 ))}
               </>
             )}
-
-            {/* In-progress Instance Polygon */}
-            {drawingInstancePolygon &&
-              selectedTool === 'segmentation' &&
-              segmentationType === 'instance' && (
-                <>
-                  {tempInstancePoints.length > 1 && (
-                    <Line
-                      points={flattenPoints([
-                        ...tempInstancePoints,
-                        tempInstancePoints[0],
-                      ])}
-                      fill={activeLabelColor + '55'}
-                      stroke={activeLabelColor}
-                      strokeWidth={2 / scale}
-                      closed
-                    />
-                  )}
-                  {tempInstancePoints.map((pt, idx) => (
-                    <Circle
-                      key={idx}
-                      x={pt.x}
-                      y={pt.y}
-                      radius={4 / scale}
-                      fill="#fff"
-                      stroke={activeLabelColor}
-                      strokeWidth={1 / scale}
-                    />
-                  ))}
-                </>
-              )}
-
-            {/* In-progress Semantic Polygon */}
-            {drawingSemanticPolygon &&
-              selectedTool === 'segmentation' &&
-              segmentationType === 'semantic' && (
-                <>
-                  {tempSemanticPoints.length > 1 && (
-                    <Line
-                      points={flattenPoints([
-                        ...tempSemanticPoints,
-                        tempSemanticPoints[0],
-                      ])}
-                      fill={activeLabelColor + '55'}
-                      stroke={activeLabelColor}
-                      strokeWidth={2 / scale}
-                      closed
-                    />
-                  )}
-                  {tempSemanticPoints.map((pt, idx) => (
-                    <Circle
-                      key={idx}
-                      x={pt.x}
-                      y={pt.y}
-                      radius={4 / scale}
-                      fill="#fff"
-                      stroke={activeLabelColor}
-                      strokeWidth={1 / scale}
-                    />
-                  ))}
-                </>
-              )}
-
-            {/* In-progress Panoptic Polygon for Instance */}
-            {drawingInstancePolygon &&
-              selectedTool === 'segmentation' &&
-              segmentationType === 'panoptic' &&
-              panopticOption === 'instance' && (
-                <>
-                  {tempInstancePoints.length > 1 && (
-                    <Line
-                      points={flattenPoints([
-                        ...tempInstancePoints,
-                        tempInstancePoints[0],
-                      ])}
-                      fill={activeLabelColor + '55'}
-                      stroke={activeLabelColor}
-                      strokeWidth={2 / scale}
-                      closed
-                    />
-                  )}
-                  {tempInstancePoints.map((pt, idx) => (
-                    <Circle
-                      key={idx}
-                      x={pt.x}
-                      y={pt.y}
-                      radius={4 / scale}
-                      fill="#fff"
-                      stroke={activeLabelColor}
-                      strokeWidth={1 / scale}
-                    />
-                  ))}
-                </>
-              )}
-
-            {/* In-progress Panoptic Polygon for Semantic */}
-            {drawingSemanticPolygon &&
-              selectedTool === 'segmentation' &&
-              segmentationType === 'panoptic' &&
-              panopticOption === 'semantic' && (
-                <>
-                  {tempSemanticPoints.length > 1 && (
-                    <Line
-                      points={flattenPoints([
-                        ...tempSemanticPoints,
-                        tempSemanticPoints[0],
-                      ])}
-                      fill={activeLabelColor + '55'}
-                      stroke={activeLabelColor}
-                      strokeWidth={2 / scale}
-                      closed
-                    />
-                  )}
-                  {tempSemanticPoints.map((pt, idx) => (
-                    <Circle
-                      key={idx}
-                      x={pt.x}
-                      y={pt.y}
-                      radius={4 / scale}
-                      fill="#fff"
-                      stroke={activeLabelColor}
-                      strokeWidth={1 / scale}
-                    />
-                  ))}
-                </>
-              )}
           </Group>
 
           {/* Transformer (only for bbox & ellipse) */}
@@ -2051,28 +1660,6 @@ function DeleteLabel({ annotation, scale, shapeBoundingBox, onDelete, color }) {
     >
       <Tag fill={color || 'red'} opacity={0.8} cornerRadius={4} />
       <Text text="Delete" fill="#fff" padding={5} fontSize={14} />
-    </Label>
-  );
-}
-
-// A small Konva Label to display the instance ID if present
-function InstanceIdLabel({ annotation, scale, shapeBoundingBox, color }) {
-  const box = shapeBoundingBox(annotation);
-  if (!box) return null;
-  if (!annotation.instanceId) return null;
-
-  const xPos = box.x1;
-  const yPos = box.y1 - 35 / scale; // place slightly above the shape
-
-  return (
-    <Label
-      x={xPos}
-      y={yPos}
-      scaleX={1 / scale}
-      scaleY={1 / scale}
-    >
-      <Tag fill={color || '#ff0000'} opacity={0.9} cornerRadius={4} />
-      <Text text={annotation.instanceId} fill="#fff" padding={5} fontSize={14} />
     </Label>
   );
 }

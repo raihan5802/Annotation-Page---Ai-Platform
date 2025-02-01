@@ -29,15 +29,9 @@ export default function Annotate() {
   const [redoStack, setRedoStack] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Tools: move, bbox, polygon, polyline, point, ellipse, segmentation
+  // Tools: move, bbox, polygon, polyline, point, ellipse
   // default to 'move'
   const [selectedTool, setSelectedTool] = useState('move');
-
-  // For “segmentation” specifically, we have a small dropdown (Instance, Semantic, Panoptic)
-  const [segmentationType, setSegmentationType] = useState('instance');
-
-  // New state for panoptic segmentation option
-  const [panopticOption, setPanopticOption] = useState('instance');
 
   const [selectedLabelClass, setSelectedLabelClass] = useState(
     labelClasses[0]?.name || ''
@@ -213,15 +207,10 @@ export default function Annotate() {
         setSelectedTool('point');
       } else if (key === 'e' || key === 'E') {
         setSelectedTool('ellipse');
-      }
-      // Segmentation on plain "S"
-      else if ((key === 's' || key === 'S') && e.ctrlKey) {
+      } else if ((key === 's' || key === 'S') && e.ctrlKey) {
         // Ctrl+S => Save
         e.preventDefault();
         handleSave();
-      } else if (key === 's' || key === 'S') {
-        // Just S => Segmentation
-        setSelectedTool('segmentation');
       }
 
       // Esc => cancel shape
@@ -381,57 +370,6 @@ export default function Annotate() {
             <span className="tool-icon">⬭</span> Ellipse (E)
           </label>
 
-          {/* Segmentation */}
-          <label>
-            <input
-              type="radio"
-              name="tool"
-              value="segmentation"
-              checked={selectedTool === 'segmentation'}
-              onChange={() => setSelectedTool('segmentation')}
-            />
-            <span className="tool-icon">🎨</span> Segmentation (S)
-          </label>
-          {selectedTool === 'segmentation' && (
-            <div style={{ marginLeft: '20px', marginBottom: '8px' }}>
-              <label style={{ display: 'block', marginBottom: '4px' }}>
-                Type:
-              </label>
-              <select
-                value={segmentationType}
-                onChange={(e) => setSegmentationType(e.target.value)}
-              >
-                <option value="instance">Instance</option>
-                <option value="semantic">Semantic</option>
-                <option value="panoptic">Panoptic</option>
-              </select>
-            </div>
-          )}
-          {selectedTool === 'segmentation' && segmentationType === 'panoptic' && (
-            <div style={{ marginLeft: '20px', marginBottom: '8px' }}>
-              <label>
-                <input
-                  type="radio"
-                  name="panopticOption"
-                  value="instance"
-                  checked={panopticOption === 'instance'}
-                  onChange={() => setPanopticOption('instance')}
-                />
-                Instance
-              </label>
-              <label style={{ marginLeft: '8px' }}>
-                <input
-                  type="radio"
-                  name="panopticOption"
-                  value="semantic"
-                  checked={panopticOption === 'semantic'}
-                  onChange={() => setPanopticOption('semantic')}
-                />
-                Semantic
-              </label>
-            </div>
-          )}
-
           <h3 style={{ marginTop: 16 }}>Active Label</h3>
           <select
             value={selectedLabelClass}
@@ -445,10 +383,11 @@ export default function Annotate() {
           </select>
 
           <div className="note-area">
-            <p><strong>Shortcuts:</strong></p>
+            <p>
+              <strong>Shortcuts:</strong>
+            </p>
             <ul>
               <li>M/B/P/L/O/E => Tools</li>
-              <li>S => Segmentation</li>
               <li>Ctrl+S => Save</li>
               <li>Esc => Cancel shape</li>
               <li>ArrowLeft => Prev image</li>
@@ -479,9 +418,6 @@ export default function Annotate() {
               onDeleteAnnotation={handleDeleteAnnotation}
               activeLabel={selectedLabelClass}
               labelClasses={labelClasses}
-              // Pass segmentationType and panopticOption to the canvas
-              segmentationType={segmentationType}
-              panopticOption={panopticOption}
             />
           ) : (
             <div style={{ textAlign: 'center', margin: 'auto' }}>
@@ -506,7 +442,9 @@ export default function Annotate() {
             <div className="export-buttons">
               <button onClick={() => exportAnnotations('coco')}>COCO</button>
               <button onClick={() => exportAnnotations('yolo')}>YOLO</button>
-              <button onClick={() => exportAnnotations('pascal')}>Pascal VOC</button>
+              <button onClick={() => exportAnnotations('pascal')}>
+                Pascal VOC
+              </button>
             </div>
             <button className="close-btn" onClick={closeExport}>
               Close

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './ImageHome.css';
 
 // A small color palette for auto-assigning label colors
@@ -12,6 +12,9 @@ const COLOR_PALETTE = [
 
 export default function ImageHome() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Read the segmentation mode flag from location state; default is false.
+  const segmentationMode = location.state?.segmentationMode || false;
 
   const [taskName, setTaskName] = useState('');
   const [labelName, setLabelName] = useState('');
@@ -96,7 +99,11 @@ export default function ImageHome() {
 
   const goAnnotate = () => {
     if (!folderData) return;
-    navigate('/annotate', { state: { folderInfo: folderData } });
+    if (segmentationMode) {
+      navigate('/segmentation', { state: { folderInfo: folderData } });
+    } else {
+      navigate('/annotate', { state: { folderInfo: folderData } });
+    }
   };
 
   return (
@@ -163,7 +170,9 @@ export default function ImageHome() {
 
       <div className="buttons-row">
         <button onClick={handleUpload}>Upload</button>
-        <button onClick={goAnnotate} disabled={!folderData}>Go to Annotate</button>
+        <button onClick={goAnnotate} disabled={!folderData}>
+          {segmentationMode ? 'Go to Segmentation' : 'Go to Annotate'}
+        </button>
       </div>
     </div>
   );
