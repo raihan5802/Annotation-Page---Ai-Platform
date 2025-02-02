@@ -44,6 +44,12 @@ export default function Segmentation() {
     const currentFileUrl = files[currentIndex]?.url;
     const currentShapes = annotations[currentFileUrl] || [];
 
+    // New states for points‐limit modal (for polygon & segmentation annotations)
+    const [showPointsLimitModal, setShowPointsLimitModal] = useState(false);
+    const [pointsLimitInput, setPointsLimitInput] = useState('');
+    const [pendingTool, setPendingTool] = useState('');
+    const [currentPointsLimit, setCurrentPointsLimit] = useState(0);
+
     const handleAnnotationsChange = (newShapes) => {
         const updated = {
             ...annotations,
@@ -182,12 +188,12 @@ export default function Segmentation() {
             if (key === 'm' || key === 'M') {
                 setSelectedTool('move');
             } else if (key === 'p' || key === 'P') {
-                setSelectedTool('polygon');
+                handleToolChange('polygon');
             } else if ((key === 's' || key === 'S') && e.ctrlKey) {
                 e.preventDefault();
                 handleSave();
             } else if (key === 's' || key === 'S') {
-                setSelectedTool('segmentation');
+                handleToolChange('segmentation');
             }
             if (key === 'Escape') {
                 const event = new CustomEvent('cancel-annotation');
@@ -300,6 +306,16 @@ export default function Segmentation() {
         setSelectedTool('move');
     };
 
+    // Function to handle tool changes for polygon and segmentation so that a modal is shown
+    const handleToolChange = (tool) => {
+        if (tool === 'polygon' || tool === 'segmentation') {
+            setPendingTool(tool);
+            setShowPointsLimitModal(true);
+        } else {
+            setSelectedTool(tool);
+        }
+    };
+
     return (
         <div className="annotate-container">
             <AnnotationTopBar
@@ -347,7 +363,7 @@ export default function Segmentation() {
                             name="tool"
                             value="polygon"
                             checked={selectedTool === 'polygon'}
-                            onChange={() => setSelectedTool('polygon')}
+                            onChange={() => handleToolChange('polygon')}
                         />
                         <span className="tool-icon">🔺</span> Polygon (P)
                     </label>
@@ -357,7 +373,7 @@ export default function Segmentation() {
                             name="tool"
                             value="segmentation"
                             checked={selectedTool === 'segmentation'}
-                            onChange={() => setSelectedTool('segmentation')}
+                            onChange={() => handleToolChange('segmentation')}
                         />
                         <span className="tool-icon">🎨</span> Segmentation (S)
                     </label>
@@ -439,6 +455,7 @@ export default function Segmentation() {
                             labelClasses={localLabelClasses}
                             segmentationType={segmentationType}
                             panopticOption={panopticOption}
+                            pointsLimit={currentPointsLimit}
                         />
                     ) : (
                         <div style={{ textAlign: 'center', margin: 'auto' }}>
@@ -502,6 +519,68 @@ export default function Segmentation() {
                                 Add
                             </button>
                             <button onClick={() => setShowAddLabelModal(false)}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showPointsLimitModal && (
+                <div
+                    className="modal-backdrop"
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: 'rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <div
+                        className="modal"
+                        style={{
+                            background: '#fff',
+                            padding: '20px',
+                            borderRadius: '8px',
+                            minWidth: '300px'
+                        }}
+                    >
+                        <h3>
+                            {pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1)} Annotation Points Limit
+                        </h3>
+                        <div>
+                            <input
+                                type="number"
+                                placeholder="Number of points (0 for unlimited)"
+                                value={pointsLimitInput}
+                                onChange={(e) => setPointsLimitInput(e.target.value)}
+                                style={{ width: '100%', marginBottom: '10px' }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => {
+                                    const limit = parseInt(pointsLimitInput);
+                                    setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
+                                    setSelectedTool(pendingTool);
+                                    setShowPointsLimitModal(false);
+                                    setPointsLimitInput('');
+                                }}
+                                style={{ marginRight: '8px' }}
+                            >
+                                Shape
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowPointsLimitModal(false);
+                                    setPointsLimitInput('');
+                                }}
+                            >
                                 Cancel
                             </button>
                         </div>

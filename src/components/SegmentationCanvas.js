@@ -54,7 +54,8 @@ export default function SegmentationCanvas({
     onDeleteAnnotation,
     activeLabel,
     segmentationType,
-    panopticOption, // new prop for panoptic segmentation
+    panopticOption,
+    pointsLimit, // new prop for point-based tools
 }) {
     const stageRef = useRef(null);
     const containerRef = useRef(null);
@@ -65,7 +66,7 @@ export default function SegmentationCanvas({
     // Master group offset (image panning)
     const [imagePos, setImagePos] = useState({ x: 0, y: 0 });
 
-    // In-progress shape states (only for polygon-based tools remain)
+    // In-progress shape states (only for polygon-based tools)
     const [tempPoints, setTempPoints] = useState([]);
     const [drawingPolygon, setDrawingPolygon] = useState(false);
 
@@ -222,14 +223,21 @@ export default function SegmentationCanvas({
 
     // ----------- Creating Polygon -----------
     function addPolygonPoint(pos) {
-        setTempPoints((prev) => [...prev, pos]);
+        setTempPoints((prev) => {
+            const newPoints = [...prev, pos];
+            if (pointsLimit > 0 && newPoints.length === pointsLimit) {
+                setTimeout(() => finalizePolygon(newPoints), 0);
+            }
+            return newPoints;
+        });
         setDrawingPolygon(true);
     }
-    function finalizePolygon() {
-        if (tempPoints.length >= 3) {
+    function finalizePolygon(pointsParam) {
+        const pointsToUse = pointsParam || tempPoints;
+        if (pointsToUse.length >= 3) {
             const newAnn = {
                 type: 'polygon',
-                points: tempPoints,
+                points: pointsToUse,
                 label: activeLabel,
                 color: activeLabelColor,
             };
@@ -253,14 +261,21 @@ export default function SegmentationCanvas({
 
     // ----------- Creating Instance Segmentation Polygon -----------
     function addInstancePolygonPoint(pos) {
-        setTempInstancePoints((prev) => [...prev, pos]);
+        setTempInstancePoints((prev) => {
+            const newPoints = [...prev, pos];
+            if (pointsLimit > 0 && newPoints.length === pointsLimit) {
+                setTimeout(() => finalizeInstancePolygon(newPoints), 0);
+            }
+            return newPoints;
+        });
         setDrawingInstancePolygon(true);
     }
-    function finalizeInstancePolygon() {
-        if (tempInstancePoints.length >= 3) {
+    function finalizeInstancePolygon(pointsParam) {
+        const pointsToUse = pointsParam || tempInstancePoints;
+        if (pointsToUse.length >= 3) {
             let newAnn = {
                 type: 'polygon',
-                points: tempInstancePoints,
+                points: pointsToUse,
                 label: activeLabel,
             };
 
@@ -293,14 +308,21 @@ export default function SegmentationCanvas({
 
     // ----------- Creating Semantic Segmentation Polygon -----------
     function addSemanticPolygonPoint(pos) {
-        setTempSemanticPoints((prev) => [...prev, pos]);
+        setTempSemanticPoints((prev) => {
+            const newPoints = [...prev, pos];
+            if (pointsLimit > 0 && newPoints.length === pointsLimit) {
+                setTimeout(() => finalizeSemanticPolygon(newPoints), 0);
+            }
+            return newPoints;
+        });
         setDrawingSemanticPolygon(true);
     }
-    function finalizeSemanticPolygon() {
-        if (tempSemanticPoints.length >= 3) {
+    function finalizeSemanticPolygon(pointsParam) {
+        const pointsToUse = pointsParam || tempInstancePoints;
+        if (pointsToUse.length >= 3) {
             const newAnn = {
                 type: 'polygon',
-                points: tempSemanticPoints,
+                points: pointsToUse,
                 label: activeLabel,
                 color: activeLabelColor,
             };

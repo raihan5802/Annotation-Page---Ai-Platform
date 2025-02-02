@@ -56,6 +56,7 @@ export default function AnnotationCanvas({
   onFinishShape,
   onDeleteAnnotation,
   activeLabel,
+  pointsLimit, // new prop for point-based tools
 }) {
   const stageRef = useRef(null);
   const containerRef = useRef(null);
@@ -524,14 +525,21 @@ export default function AnnotationCanvas({
 
   // ----------- Creating Polygon -----------
   function addPolygonPoint(pos) {
-    setTempPoints((prev) => [...prev, pos]);
+    setTempPoints((prev) => {
+      const newPoints = [...prev, pos];
+      if (pointsLimit > 0 && newPoints.length === pointsLimit) {
+        setTimeout(() => finalizePolygon(newPoints), 0);
+      }
+      return newPoints;
+    });
     setDrawingPolygon(true);
   }
-  function finalizePolygon() {
-    if (tempPoints.length >= 3) {
+  function finalizePolygon(pointsParam) {
+    const pointsToUse = pointsParam || tempPoints;
+    if (pointsToUse.length >= 3) {
       const newAnn = {
         type: 'polygon',
-        points: tempPoints,
+        points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
       };
@@ -555,14 +563,21 @@ export default function AnnotationCanvas({
 
   // ----------- Creating Polyline -----------
   function addPolylinePoint(pos) {
-    setTempPolyline((prev) => [...prev, pos]);
+    setTempPolyline((prev) => {
+      const newPoints = [...prev, pos];
+      if (pointsLimit > 0 && newPoints.length === pointsLimit) {
+        setTimeout(() => finalizePolyline(newPoints), 0);
+      }
+      return newPoints;
+    });
     setDrawingPolyline(true);
   }
-  function finalizePolyline() {
-    if (tempPolyline.length >= 2) {
+  function finalizePolyline(pointsParam) {
+    const pointsToUse = pointsParam || tempInstancePoints;
+    if (pointsToUse.length >= 2) {
       const newAnn = {
         type: 'polyline',
-        points: tempPolyline,
+        points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
       };
@@ -586,14 +601,21 @@ export default function AnnotationCanvas({
 
   // ----------- Creating Points (multiple point tool) -----------
   function addPointToPoints(pos) {
-    setTempPointPoints((prev) => [...prev, pos]);
+    setTempPointPoints((prev) => {
+      const newPoints = [...prev, pos];
+      if (pointsLimit > 0 && newPoints.length === pointsLimit) {
+        setTimeout(() => finalizePoint(newPoints), 0);
+      }
+      return newPoints;
+    });
     setDrawingPoint(true);
   }
-  function finalizePoint() {
-    if (tempPointPoints.length > 0) {
+  function finalizePoint(pointsParam) {
+    const pointsToUse = pointsParam || tempInstancePoints;
+    if (pointsToUse.length > 0) {
       const newAnn = {
         type: 'points',
-        points: tempPointPoints,
+        points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
       };
@@ -1003,7 +1025,7 @@ export default function AnnotationCanvas({
     const midX = (currentPt.x + nextPt.x) / 2;
     const midY = (currentPt.y + nextPt.y) / 2;
 
-    shapePoints.splice(vertexIndex + 1, 0, { x: midX, y: midY });
+    shapePoints.splice(vertexIndex + 1, 1, { x: midX, y: midY });
 
     ann.points = shapePoints;
     updated[annIndex] = ann;

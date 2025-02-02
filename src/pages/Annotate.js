@@ -41,6 +41,12 @@ export default function Annotate() {
   const currentFileUrl = files[currentIndex]?.url;
   const currentShapes = annotations[currentFileUrl] || [];
 
+  // New state for points‐limit modal for polygon, polyline, and point tools
+  const [showPointsLimitModal, setShowPointsLimitModal] = useState(false);
+  const [pointsLimitInput, setPointsLimitInput] = useState('');
+  const [pendingTool, setPendingTool] = useState('');
+  const [currentPointsLimit, setCurrentPointsLimit] = useState(0);
+
   // Whenever shapes change, store old state in undoStack
   const handleAnnotationsChange = (newShapes) => {
     const updated = {
@@ -197,17 +203,17 @@ export default function Annotate() {
       const key = e.key;
 
       if (key === 'm' || key === 'M') {
-        setSelectedTool('move');
+        handleToolChange('move');
       } else if (key === 'b' || key === 'B') {
-        setSelectedTool('bbox');
+        handleToolChange('bbox');
       } else if (key === 'p' || key === 'P') {
-        setSelectedTool('polygon');
+        handleToolChange('polygon');
       } else if (key === 'l' || key === 'L') {
-        setSelectedTool('polyline');
+        handleToolChange('polyline');
       } else if (key === 'o' || key === 'O') {
-        setSelectedTool('point');
+        handleToolChange('point');
       } else if (key === 'e' || key === 'E') {
-        setSelectedTool('ellipse');
+        handleToolChange('ellipse');
       } else if ((key === 's' || key === 'S') && e.ctrlKey) {
         e.preventDefault();
         handleSave();
@@ -327,6 +333,16 @@ export default function Annotate() {
     setSelectedTool('move');
   };
 
+  // Function to handle tool changes so that for polygon, polyline, and point a modal is shown
+  const handleToolChange = (tool) => {
+    if (['polygon', 'polyline', 'point'].includes(tool)) {
+      setPendingTool(tool);
+      setShowPointsLimitModal(true);
+    } else {
+      setSelectedTool(tool);
+    }
+  };
+
   return (
     <div className="annotate-container">
       <AnnotationTopBar
@@ -364,7 +380,7 @@ export default function Annotate() {
               name="tool"
               value="move"
               checked={selectedTool === 'move'}
-              onChange={() => setSelectedTool('move')}
+              onChange={() => handleToolChange('move')}
             />
             <span className="tool-icon">👆</span> Move (M)
           </label>
@@ -374,7 +390,7 @@ export default function Annotate() {
               name="tool"
               value="bbox"
               checked={selectedTool === 'bbox'}
-              onChange={() => setSelectedTool('bbox')}
+              onChange={() => handleToolChange('bbox')}
             />
             <span className="tool-icon">⬛</span> BBox (B)
           </label>
@@ -384,7 +400,7 @@ export default function Annotate() {
               name="tool"
               value="polygon"
               checked={selectedTool === 'polygon'}
-              onChange={() => setSelectedTool('polygon')}
+              onChange={() => handleToolChange('polygon')}
             />
             <span className="tool-icon">🔺</span> Polygon (P)
           </label>
@@ -394,7 +410,7 @@ export default function Annotate() {
               name="tool"
               value="polyline"
               checked={selectedTool === 'polyline'}
-              onChange={() => setSelectedTool('polyline')}
+              onChange={() => handleToolChange('polyline')}
             />
             <span className="tool-icon">📈</span> Polyline (L)
           </label>
@@ -404,7 +420,7 @@ export default function Annotate() {
               name="tool"
               value="point"
               checked={selectedTool === 'point'}
-              onChange={() => setSelectedTool('point')}
+              onChange={() => handleToolChange('point')}
             />
             <span className="tool-icon">📍</span> Point (O)
           </label>
@@ -414,7 +430,7 @@ export default function Annotate() {
               name="tool"
               value="ellipse"
               checked={selectedTool === 'ellipse'}
-              onChange={() => setSelectedTool('ellipse')}
+              onChange={() => handleToolChange('ellipse')}
             />
             <span className="tool-icon">⬭</span> Ellipse (E)
           </label>
@@ -455,6 +471,7 @@ export default function Annotate() {
               onDeleteAnnotation={handleDeleteAnnotation}
               activeLabel={selectedLabelClass}
               labelClasses={localLabelClasses}
+              pointsLimit={currentPointsLimit}
             />
           ) : (
             <div style={{ textAlign: 'center', margin: 'auto' }}>
@@ -518,6 +535,68 @@ export default function Annotate() {
                 Add
               </button>
               <button onClick={() => setShowAddLabelModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPointsLimitModal && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            className="modal"
+            style={{
+              background: '#fff',
+              padding: '20px',
+              borderRadius: '8px',
+              minWidth: '300px'
+            }}
+          >
+            <h3>
+              {pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1)} Annotation Points Limit
+            </h3>
+            <div>
+              <input
+                type="number"
+                placeholder="Number of points (0 for unlimited)"
+                value={pointsLimitInput}
+                onChange={(e) => setPointsLimitInput(e.target.value)}
+                style={{ width: '100%', marginBottom: '10px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  const limit = parseInt(pointsLimitInput);
+                  setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
+                  setSelectedTool(pendingTool);
+                  setShowPointsLimitModal(false);
+                  setPointsLimitInput('');
+                }}
+                style={{ marginRight: '8px' }}
+              >
+                Shape
+              </button>
+              <button
+                onClick={() => {
+                  setShowPointsLimitModal(false);
+                  setPointsLimitInput('');
+                }}
+              >
                 Cancel
               </button>
             </div>
