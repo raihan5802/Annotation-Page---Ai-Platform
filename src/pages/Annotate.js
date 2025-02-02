@@ -1,4 +1,3 @@
-// Annotate.js
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -239,6 +238,62 @@ export default function Annotate() {
   const [showAddLabelModal, setShowAddLabelModal] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#ff0000');
+
+  // Candidate colors for auto-selection
+  const CANDIDATE_COLORS = [
+    '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
+    '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
+    '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000',
+    '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
+  ];
+
+  // Helper: shadeColor (same as used elsewhere)
+  function shadeColor(col, amt) {
+    let usePound = false;
+    let color = col;
+    if (color[0] === '#') {
+      color = color.slice(1);
+      usePound = true;
+    }
+    let R = parseInt(color.substring(0, 2), 16);
+    let G = parseInt(color.substring(2, 4), 16);
+    let B = parseInt(color.substring(4, 6), 16);
+
+    R = Math.min(255, Math.max(0, R + amt));
+    G = Math.min(255, Math.max(0, G + amt));
+    B = Math.min(255, Math.max(0, B + amt));
+
+    const RR = R.toString(16).padStart(2, '0');
+    const GG = G.toString(16).padStart(2, '0');
+    const BB = B.toString(16).padStart(2, '0');
+
+    return (usePound ? '#' : '') + RR + GG + BB;
+  }
+
+  // Compute the next available color (checking both label colors and their instance variations)
+  function getNextAvailableColor() {
+    const usedColors = new Set();
+    const offsets = [0, -50, -100, -150, -200];
+    localLabelClasses.forEach((lc) => {
+      usedColors.add(lc.color.toLowerCase());
+      offsets.forEach((offset) => {
+        usedColors.add(shadeColor(lc.color, offset).toLowerCase());
+      });
+    });
+    for (let color of CANDIDATE_COLORS) {
+      if (!usedColors.has(color.toLowerCase())) {
+        return color;
+      }
+    }
+    return CANDIDATE_COLORS[0];
+  }
+
+  // When the add-label modal is opened, automatically select a new color
+  useEffect(() => {
+    if (showAddLabelModal) {
+      setNewLabelColor(getNextAvailableColor());
+    }
+  }, [showAddLabelModal, localLabelClasses]);
 
   const handleAddNewLabel = () => {
     if (!newLabelName.trim()) {

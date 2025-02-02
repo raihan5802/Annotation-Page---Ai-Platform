@@ -81,9 +81,6 @@ export default function SegmentationCanvas({
     const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
     const [copiedAnnotation, setCopiedAnnotation] = useState(null);
 
-    // Instance counters for instance segmentation
-    const [instanceCounters, setInstanceCounters] = useState({});
-
     // ----------- Window / container sizing -----------
     useEffect(() => {
         const handleResize = () => {
@@ -109,29 +106,6 @@ export default function SegmentationCanvas({
         };
         img.onerror = () => console.error('Could not load image:', fileUrl);
     }, [fileUrl]);
-
-    // ----------- Color shading for instance polygons -----------
-    function shadeColor(col, amt) {
-        let usePound = false;
-        let color = col;
-        if (color[0] === '#') {
-            color = color.slice(1);
-            usePound = true;
-        }
-        let R = parseInt(color.substring(0, 2), 16);
-        let G = parseInt(color.substring(2, 4), 16);
-        let B = parseInt(color.substring(4, 6), 16);
-
-        R = Math.min(255, Math.max(0, R + amt));
-        G = Math.min(255, Math.max(0, G + amt));
-        B = Math.min(255, Math.max(0, B + amt));
-
-        const RR = R.toString(16).padStart(2, '0');
-        const GG = G.toString(16).padStart(2, '0');
-        const BB = B.toString(16).padStart(2, '0');
-
-        return (usePound ? '#' : '') + RR + GG + BB;
-    }
 
     // ----------- Relative pointer position -----------
     function getGroupPos(evt) {
@@ -290,30 +264,21 @@ export default function SegmentationCanvas({
                 label: activeLabel,
             };
 
-            // Assign instance ID and color variation
-            const labelKey = activeLabel || 'unknown';
-            const currentCount = instanceCounters[labelKey] || 0;
-            const newCount = currentCount + 1;
-            const instanceId = labelKey + '-' + newCount;
+            // Compute new instance ID based on current annotations of this label.
+            const currentInstances = annotations.filter(
+                (ann) => ann.label === activeLabel && ann.instanceId
+            );
+            const newCount = currentInstances.length + 1;
+            const instanceId = activeLabel + '-' + newCount;
 
-            // negative offset to ensure color changes even for #ff0000
-            const offset = -(newCount - 1) * 50;
-            const instanceColor = shadeColor(activeLabelColor, offset);
+            // Generate a unique random color that does not match any other labels or instances.
+            const instanceColor = getUniqueInstanceColor();
 
             newAnn.instanceId = instanceId;
             newAnn.color = instanceColor;
 
-            setInstanceCounters({
-                ...instanceCounters,
-                [labelKey]: newCount,
-            });
-
             if (konvaImg) {
-                const clipped = clipAnnotationToBoundary(
-                    newAnn,
-                    konvaImg.width,
-                    konvaImg.height
-                );
+                const clipped = clipAnnotationToBoundary(newAnn, konvaImg.width, konvaImg.height);
                 if (clipped) {
                     onAnnotationsChange([...annotations, clipped]);
                 }
@@ -340,11 +305,7 @@ export default function SegmentationCanvas({
                 color: activeLabelColor,
             };
             if (konvaImg) {
-                const clipped = clipAnnotationToBoundary(
-                    newAnn,
-                    konvaImg.width,
-                    konvaImg.height
-                );
+                const clipped = clipAnnotationToBoundary(newAnn, konvaImg.width, konvaImg.height);
                 if (clipped) {
                     onAnnotationsChange([...annotations, clipped]);
                 }
@@ -646,6 +607,35 @@ export default function SegmentationCanvas({
         }
         onAnnotationsChange(updated);
     };
+
+    // ----------- Helper to generate a unique random color -----------
+    function getUniqueInstanceColor() {
+        function randomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        let newColor = randomColor();
+        // Build a set of used colors from labelClasses and existing instance annotations
+        const usedColors = new Set();
+        if (labelClasses) {
+            labelClasses.forEach(lc => usedColors.add(lc.color.toUpperCase()));
+        }
+        annotations.forEach(ann => {
+            if (ann.instanceId && ann.color) {
+                usedColors.add(ann.color.toUpperCase());
+            }
+        });
+        let attempts = 0;
+        while (usedColors.has(newColor.toUpperCase()) && attempts < 100) {
+            newColor = randomColor();
+            attempts++;
+        }
+        return newColor;
+    }
 
     return (
         <div className="canvas-container" ref={containerRef}>
