@@ -113,7 +113,7 @@ export default function ImageHome() {
     if (segmentationMode) {
       navigate('/segmentation', { state: { folderInfo: folderData } });
     } else {
-      navigate('/annotate', { state: { folderInfo: folderData } });
+      navigate('/detection', { state: { folderInfo: folderData } });
     }
   };
 

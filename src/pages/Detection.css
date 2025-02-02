@@ -1,0 +1,117 @@
+:root {
+  --primary-color: #2C3E50;
+  --secondary-color: #ecf0f1;
+  --accent-color: #2980b9;
+  --hover-accent: #1f6690;
+  --background-color: #f7f7f7;
+  --text-color: #333;
+  --sidebar-bg: #34495e;
+  --sidebar-text: #ecf0f1;
+  --border-color: #dcdcdc;
+  --modal-bg: #ffffff;
+}
+
+.annotate-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--background-color);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-color);
+}
+
+.annotate-main {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  overflow: hidden;
+}
+
+.tools-sidebar {
+  width: 240px;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  padding: 20px;
+  border-right: 1px solid var(--border-color);
+}
+
+.tools-sidebar h3 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.tools-sidebar label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.tools-sidebar input[type='radio'] {
+  margin-right: 10px;
+}
+
+.tool-icon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+.note-area {
+  margin-top: 20px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.canvas-area {
+  flex: 1;
+  background: #fff;
+  position: relative;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.export-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.export-modal {
+  background: var(--modal-bg);
+  padding: 24px 32px;
+  border-radius: 10px;
+  min-width: 360px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.export-buttons {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px 0;
+}
+
+.export-buttons button,
+.close-btn {
+  padding: 10px 20px;
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.3s ease;
+}
+
+.export-buttons button:hover,
+.close-btn:hover {
+  background: var(--hover-accent);
+}

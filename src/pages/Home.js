@@ -22,7 +22,7 @@ function Home() {
         <p>
           Supports bounding box &amp; polygon, multiple labels, and exports to COCO/YOLO/Pascal VOC.
         </p>
-        <button onClick={handleGoImages}>Start with Images</button>
+        <button onClick={handleGoImages}>Image Detection</button>
         <button onClick={handleGoSegmentation} style={{ marginTop: '10px' }}>
           Image Segmentation
         </button>
