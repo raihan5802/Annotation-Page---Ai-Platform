@@ -1,4 +1,4 @@
-// annotate.js
+// Annotate.js
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -30,14 +30,15 @@ export default function Annotate() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Tools: move, bbox, polygon, polyline, point, ellipse
-  // default to 'move'
   const [selectedTool, setSelectedTool] = useState('move');
 
+  // Active label state – we now use a local labelClasses list for modification
   const [selectedLabelClass, setSelectedLabelClass] = useState(
     labelClasses[0]?.name || ''
   );
-  const [scale, setScale] = useState(1.0);
+  const [localLabelClasses, setLocalLabelClasses] = useState(labelClasses);
 
+  const [scale, setScale] = useState(1.0);
   const currentFileUrl = files[currentIndex]?.url;
   const currentShapes = annotations[currentFileUrl] || [];
 
@@ -103,7 +104,7 @@ export default function Annotate() {
     const bodyData = {
       folderId,
       taskName,
-      labelClasses,
+      labelClasses: localLabelClasses,
       annotations,
     };
     try {
@@ -128,9 +129,11 @@ export default function Annotate() {
     img.onload = () => {
       const width = img.width;
       const height = img.height;
-      const bgAnn = computeBackgroundPolygon(width, height, currentShapes, labelClasses);
+      const bgAnn = computeBackgroundPolygon(width, height, currentShapes, localLabelClasses);
       // Remove any existing background annotation (by label)
-      const newShapes = currentShapes.filter(ann => ann.label.toLowerCase() !== 'background');
+      const newShapes = currentShapes.filter(
+        (ann) => ann.label.toLowerCase() !== 'background'
+      );
       newShapes.push(bgAnn);
       handleAnnotationsChange(newShapes);
     };
@@ -144,7 +147,7 @@ export default function Annotate() {
       { x: 0, y: imageHeight },
     ];
     const holes = [];
-    shapes.forEach(ann => {
+    shapes.forEach((ann) => {
       if (ann.type === 'bbox') {
         const hole = [
           { x: ann.x, y: ann.y },
@@ -194,7 +197,6 @@ export default function Annotate() {
     const handleKey = (e) => {
       const key = e.key;
 
-      // Tools
       if (key === 'm' || key === 'M') {
         setSelectedTool('move');
       } else if (key === 'b' || key === 'B') {
@@ -208,24 +210,19 @@ export default function Annotate() {
       } else if (key === 'e' || key === 'E') {
         setSelectedTool('ellipse');
       } else if ((key === 's' || key === 'S') && e.ctrlKey) {
-        // Ctrl+S => Save
         e.preventDefault();
         handleSave();
       }
 
-      // Esc => cancel shape
       if (key === 'Escape') {
         const event = new CustomEvent('cancel-annotation');
         window.dispatchEvent(event);
       }
-      // Next / Prev
       if (key === 'ArrowRight') {
         handleNext();
       } else if (key === 'ArrowLeft') {
         handlePrev();
       }
-
-      // Undo / Redo
       if (e.ctrlKey && (key === 'z' || key === 'Z')) {
         e.preventDefault();
         undo();
@@ -236,42 +233,39 @@ export default function Annotate() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-    // eslint-disable-next-line
   }, [annotations, undoStack, redoStack]);
 
-  // -------------- Export Logic --------------
-  const [exportOpen, setExportOpen] = useState(false);
-  const openExport = () => setExportOpen(true);
-  const closeExport = () => setExportOpen(false);
+  // -------------- Add Label Modal --------------
+  const [showAddLabelModal, setShowAddLabelModal] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#ff0000');
 
-  const exportAnnotations = (format) => {
-    if (format === 'coco') {
-      downloadCOCO();
-    } else if (format === 'yolo') {
-      downloadYOLO();
-    } else if (format === 'pascal') {
-      downloadPascal();
+  const handleAddNewLabel = () => {
+    if (!newLabelName.trim()) {
+      alert('Label name cannot be empty');
+      return;
     }
-    closeExport();
+    const nameExists = localLabelClasses.some(
+      (lc) => lc.name.toLowerCase() === newLabelName.trim().toLowerCase()
+    );
+    if (nameExists) {
+      alert('Label already exists');
+      return;
+    }
+    const colorExists = localLabelClasses.some(
+      (lc) => lc.color.toLowerCase() === newLabelColor.trim().toLowerCase()
+    );
+    if (colorExists) {
+      alert('Label color already used. Please choose a different color.');
+      return;
+    }
+    const newLabel = { name: newLabelName.trim(), color: newLabelColor };
+    setLocalLabelClasses([...localLabelClasses, newLabel]);
+    setSelectedLabelClass(newLabel.name);
+    setNewLabelName('');
+    setNewLabelColor('#ff0000');
+    setShowAddLabelModal(false);
   };
-
-  function downloadFile(url, filename) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function downloadCOCO() {
-    alert('COCO export not yet implemented!');
-  }
-  function downloadYOLO() {
-    alert('YOLO export not yet implemented!');
-  }
-  function downloadPascal() {
-    alert('Pascal VOC export not yet implemented!');
-  }
 
   // -------------- When annotation finishes => switch to move --------------
   const handleFinishShape = () => {
@@ -287,7 +281,7 @@ export default function Annotate() {
         onSave={handleSave}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-        onExport={openExport}
+        onExport={() => { }}
         currentIndex={currentIndex}
         total={files.length}
         taskName={taskName}
@@ -371,32 +365,20 @@ export default function Annotate() {
           </label>
 
           <h3 style={{ marginTop: 16 }}>Active Label</h3>
-          <select
-            value={selectedLabelClass}
-            onChange={(e) => setSelectedLabelClass(e.target.value)}
-          >
-            {labelClasses.map((lc, i) => (
-              <option key={i} value={lc.name}>
-                {lc.name}
-              </option>
-            ))}
-          </select>
-
-          <div className="note-area">
-            <p>
-              <strong>Shortcuts:</strong>
-            </p>
-            <ul>
-              <li>M/B/P/L/O/E => Tools</li>
-              <li>Ctrl+S => Save</li>
-              <li>Esc => Cancel shape</li>
-              <li>ArrowLeft => Prev image</li>
-              <li>ArrowRight => Next image</li>
-              <li>Ctrl+Z => Undo</li>
-              <li>Ctrl+Y => Redo</li>
-              <li>Ctrl+C => Copy selected</li>
-              <li>Ctrl+V => Paste annotation</li>
-            </ul>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <select
+              value={selectedLabelClass}
+              onChange={(e) => setSelectedLabelClass(e.target.value)}
+            >
+              {localLabelClasses.map((lc, i) => (
+                <option key={i} value={lc.name}>
+                  {lc.name}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => setShowAddLabelModal(true)} style={{ marginLeft: '8px' }}>
+              Add Label
+            </button>
           </div>
         </div>
 
@@ -411,13 +393,13 @@ export default function Annotate() {
               scale={scale}
               onWheelZoom={handleWheelZoom}
               activeLabelColor={
-                labelClasses.find((l) => l.name === selectedLabelClass)?.color ||
+                localLabelClasses.find((l) => l.name === selectedLabelClass)?.color ||
                 '#ff0000'
               }
               onFinishShape={handleFinishShape}
               onDeleteAnnotation={handleDeleteAnnotation}
               activeLabel={selectedLabelClass}
-              labelClasses={labelClasses}
+              labelClasses={localLabelClasses}
             />
           ) : (
             <div style={{ textAlign: 'center', margin: 'auto' }}>
@@ -430,25 +412,60 @@ export default function Annotate() {
           annotations={currentShapes}
           onDeleteAnnotation={handleDeleteAnnotation}
           onUpdateAnnotation={handleUpdateAnnotation}
-          labelClasses={labelClasses}
+          labelClasses={localLabelClasses}
         />
       </div>
 
-      {exportOpen && (
-        <div className="export-modal-backdrop">
-          <div className="export-modal">
-            <h2>Export Annotations</h2>
-            <p>Select format:</p>
-            <div className="export-buttons">
-              <button onClick={() => exportAnnotations('coco')}>COCO</button>
-              <button onClick={() => exportAnnotations('yolo')}>YOLO</button>
-              <button onClick={() => exportAnnotations('pascal')}>
-                Pascal VOC
+      {showAddLabelModal && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            className="modal"
+            style={{
+              background: '#fff',
+              padding: '20px',
+              borderRadius: '8px',
+              minWidth: '300px'
+            }}
+          >
+            <h3>Add New Label</h3>
+            <div>
+              <input
+                type="text"
+                placeholder="Label Name"
+                value={newLabelName}
+                onChange={(e) => setNewLabelName(e.target.value)}
+                style={{ width: '100%', marginBottom: '10px' }}
+              />
+            </div>
+            <div>
+              <input
+                type="color"
+                value={newLabelColor}
+                onChange={(e) => setNewLabelColor(e.target.value)}
+                style={{ marginBottom: '10px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={handleAddNewLabel} style={{ marginRight: '8px' }}>
+                Add
+              </button>
+              <button onClick={() => setShowAddLabelModal(false)}>
+                Cancel
               </button>
             </div>
-            <button className="close-btn" onClick={closeExport}>
-              Close
-            </button>
           </div>
         </div>
       )}

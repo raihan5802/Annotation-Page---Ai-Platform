@@ -1,8 +1,8 @@
+// ImageHome.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './ImageHome.css';
 
-// A small color palette for auto-assigning label colors
 const COLOR_PALETTE = [
   '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
   '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
@@ -13,7 +13,6 @@ const COLOR_PALETTE = [
 export default function ImageHome() {
   const navigate = useNavigate();
   const location = useLocation();
-  // Read the segmentation mode flag from location state; default is false.
   const segmentationMode = location.state?.segmentationMode || false;
 
   const [taskName, setTaskName] = useState('');
@@ -26,7 +25,6 @@ export default function ImageHome() {
   const [previews, setPreviews] = useState([]);
   const [folderData, setFolderData] = useState(null);
 
-  // Show only the first 5 previews
   useEffect(() => {
     const limited = files.slice(0, 5).map(f => ({
       url: URL.createObjectURL(f),
@@ -53,10 +51,23 @@ export default function ImageHome() {
       alert('Label name is empty');
       return;
     }
+    const nameExists = labelClasses.some(
+      (lc) => lc.name.toLowerCase() === labelName.trim().toLowerCase()
+    );
+    if (nameExists) {
+      alert('Label already exists');
+      return;
+    }
+    const colorExists = labelClasses.some(
+      (lc) => lc.color.toLowerCase() === labelColor.trim().toLowerCase()
+    );
+    if (colorExists) {
+      alert('Label color already used. Please choose a different color.');
+      return;
+    }
     const newLabel = { name: labelName.trim(), color: labelColor };
     setLabelClasses([...labelClasses, newLabel]);
     setLabelName('');
-    // auto-rotate color
     setLabelColor(getNextColor());
   };
 
