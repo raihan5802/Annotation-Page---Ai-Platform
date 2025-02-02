@@ -1,4 +1,3 @@
-// ImageHome.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './ImageHome.css';
@@ -13,7 +12,9 @@ const COLOR_PALETTE = [
 export default function ImageHome() {
   const navigate = useNavigate();
   const location = useLocation();
+  // Retrieve flags from location.state:
   const segmentationMode = location.state?.segmentationMode || false;
+  const classificationMode = location.state?.classificationMode || false;
 
   const [taskName, setTaskName] = useState('');
   const [labelName, setLabelName] = useState('');
@@ -112,6 +113,8 @@ export default function ImageHome() {
     if (!folderData) return;
     if (segmentationMode) {
       navigate('/segmentation', { state: { folderInfo: folderData } });
+    } else if (classificationMode) {
+      navigate('/classification', { state: { folderInfo: folderData } });
     } else {
       navigate('/detection', { state: { folderInfo: folderData } });
     }
@@ -182,7 +185,11 @@ export default function ImageHome() {
       <div className="buttons-row">
         <button onClick={handleUpload}>Upload</button>
         <button onClick={goAnnotate} disabled={!folderData}>
-          {segmentationMode ? 'Go to Segmentation' : 'Go to Annotate'}
+          {segmentationMode
+            ? 'Go to Segmentation'
+            : classificationMode
+              ? 'Go to Classification'
+              : 'Go to Annotate'}
         </button>
       </div>
     </div>

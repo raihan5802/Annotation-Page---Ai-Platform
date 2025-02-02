@@ -6,13 +6,18 @@ function Home() {
   const navigate = useNavigate();
 
   const handleGoImages = () => {
-    // Normal annotation flow
-    navigate('/images', { state: { segmentationMode: false } });
+    // Normal detection flow
+    navigate('/images', { state: { segmentationMode: false, classificationMode: false } });
   };
 
   const handleGoSegmentation = () => {
-    // Pass a flag so that ImageHome knows we want segmentation mode.
-    navigate('/images', { state: { segmentationMode: true } });
+    // For segmentation tasks
+    navigate('/images', { state: { segmentationMode: true, classificationMode: false } });
+  };
+
+  // New function for classification mode
+  const handleGoClassification = () => {
+    navigate('/images', { state: { segmentationMode: false, classificationMode: true } });
   };
 
   return (
@@ -25,6 +30,9 @@ function Home() {
         <button onClick={handleGoImages}>Image Detection</button>
         <button onClick={handleGoSegmentation} style={{ marginTop: '10px' }}>
           Image Segmentation
+        </button>
+        <button onClick={handleGoClassification} style={{ marginTop: '10px' }}>
+          Image Classification
         </button>
       </div>
     </div>
