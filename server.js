@@ -39,7 +39,7 @@ app.post('/api/upload', upload.array('files'), (req, res) => {
   let labelClasses = [];
   try {
     labelClasses = JSON.parse(req.body.labelClasses);
-  } catch(e) {
+  } catch (e) {
     labelClasses = [];
   }
   const uploadedFiles = req.files.map((f) => ({
@@ -61,6 +61,49 @@ app.post('/api/annotations', (req, res) => {
   console.log('Annotations saved to annotations.json');
   res.json({ message: 'Annotations saved' });
 });
+
+app.post('/api/signup', (req, res) => {
+  const { username, email, password } = req.body;
+  const user = { id: Date.now(), username, email, password };
+  const csvLine = `${user.id},${user.username},${user.email},${user.password}\n`;
+
+  const filePath = path.join(__dirname, 'users.csv');
+
+  fs.appendFile(filePath, csvLine, (err) => {
+    if (err) {
+      console.error('Error writing to file', err);
+      res.status(500).json({ error: 'Error signing up user' });
+    } else {
+      console.log('User added to CSV file');
+      res.json({ message: 'User signed up successfully' });
+    }
+  });
+});
+
+app.post('/api/signin', (req, res) => {
+  const { email, password } = req.body;
+
+  const filePath = path.join(__dirname, 'users.csv');
+  const fileContent = fs.readFileSync(filePath, 'utf8');
+  const users = fileContent
+    .trim()
+    .split('\n')
+    .map((line) => {
+      const [id, username, userEmail, userPassword] = line.split(',');
+      return { id, username, email: userEmail, password: userPassword };
+    });
+
+  const user = users.find(
+    (u) => u.email === email && u.password === password
+  );
+
+  if (user) {
+    res.json({ user });
+  } else {
+    res.status(401).json({ error: 'Invalid email or password' });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

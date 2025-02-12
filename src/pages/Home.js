@@ -1,39 +1,66 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import HomeTopBar from '../components/HomeTopBar';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
 
   const handleGoImages = () => {
-    // Normal detection flow
     navigate('/images', { state: { segmentationMode: false, classificationMode: false } });
   };
 
   const handleGoSegmentation = () => {
-    // For segmentation tasks
     navigate('/images', { state: { segmentationMode: true, classificationMode: false } });
   };
 
-  // New function for classification mode
   const handleGoClassification = () => {
     navigate('/images', { state: { segmentationMode: false, classificationMode: true } });
   };
 
   return (
     <div className="home-container">
-      <div className="home-card">
-        <h1>CVAT-like Annotation</h1>
-        <p>
-          Supports bounding box &amp; polygon, multiple labels, and exports to COCO/YOLO/Pascal VOC.
-        </p>
-        <button onClick={handleGoImages}>Image Detection</button>
-        <button onClick={handleGoSegmentation} style={{ marginTop: '10px' }}>
-          Image Segmentation
-        </button>
-        <button onClick={handleGoClassification} style={{ marginTop: '10px' }}>
-          Image Classification
-        </button>
+      <HomeTopBar />
+      <div className="home-content">
+        <video
+          src="/background.mp4"
+          autoPlay
+          loop
+          muted
+          className="background-video"
+          onLoadStart={() => console.log('Video load started')}
+          onLoadedData={() => console.log('Video data loaded')}
+          onPlay={() => console.log('Video started playing')}
+        ></video>
+        <div className="annotation-box">
+          <h2>Image Annotation</h2>
+          <div className="card-container">
+            <div className="card">
+              <video src="/detection.mp4" autoPlay loop muted playbackrate='100'></video>
+              <div className="card-text">
+                <h3>Image Detection</h3>
+                <p>Contains tools like bounding box, polygon, polyline, point, and ellipse.</p>
+              </div>
+              <button onClick={handleGoImages}>Image Detection</button>
+            </div>
+            <div className="card">
+              <video src="/segmentation.mp4" autoPlay loop muted playbackrate='20000'></video>
+              <div className="card-text">
+                <h3>Image Segmentation</h3>
+                <p>Supports instance segmentation, semantic segmentation, and panoptic segmentation.</p>
+              </div>
+              <button onClick={handleGoSegmentation}>Image Segmentation</button>
+            </div>
+            <div className="card">
+              <video src="/classification.mp4" autoPlay loop muted></video>
+              <div className="card-text">
+                <h3>Image Classification</h3>
+                <p>Assign labels to entire images rather than specific regions within the images.</p>
+              </div>
+              <button onClick={handleGoClassification}>Image Classification</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

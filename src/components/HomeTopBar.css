@@ -1,0 +1,62 @@
+.home-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.menu {
+    display: flex;
+    gap: 2rem;
+}
+
+.menu-item {
+    position: relative;
+    cursor: pointer;
+}
+
+.user-section {
+    position: relative;
+}
+
+.user-info {
+    position: relative;
+}
+
+/* Add cursor pointer to clickable elements */
+.user-info span,
+.user-section>span,
+.menu-item span {
+    cursor: pointer;
+}
+
+/* Important: This controls the dropdown visibility */
+.dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: white;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: none;
+    /* Hidden by default */
+    min-width: 150px;
+    z-index: 1000;
+}
+
+/* Show dropdown when parent has active class */
+.user-info.active .dropdown {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: #f5f5f5;
+}
