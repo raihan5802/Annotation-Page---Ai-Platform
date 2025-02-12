@@ -23,7 +23,12 @@ export default function Segmentation() {
     const { folderId, taskName, labelClasses, files } = folderInfo;
 
     // -------------- Annotations for each image --------------
-    const [annotations, setAnnotations] = useState({});
+    const [annotations, setAnnotations] = useState(() => {
+        if (folderInfo && folderInfo.annotations) {
+            return folderInfo.annotations;
+        }
+        return {};
+    });
     const [undoStack, setUndoStack] = useState([]);
     const [redoStack, setRedoStack] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);

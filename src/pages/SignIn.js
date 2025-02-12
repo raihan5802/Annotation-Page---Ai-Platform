@@ -1,3 +1,4 @@
+// src/pages/SignIn.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './SignIn.css';
@@ -18,7 +19,15 @@ function SignIn() {
                 const data = await res.json();
                 if (data.user) {
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    navigate('/');
+
+                    const redirectInfo = localStorage.getItem('redirectAfterLogin');
+                    if (redirectInfo) {
+                        const { path, state } = JSON.parse(redirectInfo);
+                        localStorage.removeItem('redirectAfterLogin');
+                        navigate(path, { state });
+                    } else {
+                        navigate('/');
+                    }
                 } else {
                     alert('Invalid email or password');
                 }

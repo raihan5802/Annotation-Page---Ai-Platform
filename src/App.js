@@ -7,6 +7,7 @@ import Segmentation from './pages/Segmentation';
 import Classification from './pages/Classification';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import Tasks from './pages/Tasks';
 
 function App() {
   return (
@@ -18,9 +19,9 @@ function App() {
       <Route path="/classification" element={<Classification />} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/signup" element={<SignUp />} />
+      <Route path="/tasks" element={<Tasks />} />
     </Routes>
   );
 }
 
 export default App;
-

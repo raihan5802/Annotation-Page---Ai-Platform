@@ -12,7 +12,6 @@ const COLOR_PALETTE = [
 export default function ImageHome() {
   const navigate = useNavigate();
   const location = useLocation();
-  // Retrieve flags from location.state:
   const segmentationMode = location.state?.segmentationMode || false;
   const classificationMode = location.state?.classificationMode || false;
 
@@ -21,12 +20,21 @@ export default function ImageHome() {
   const [labelColor, setLabelColor] = useState(COLOR_PALETTE[0]);
   const [colorIndex, setColorIndex] = useState(1);
   const [labelClasses, setLabelClasses] = useState([]);
-
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [folderData, setFolderData] = useState(null);
 
   useEffect(() => {
+    const userSession = localStorage.getItem('user');
+    if (!userSession) {
+      localStorage.setItem('redirectAfterLogin', JSON.stringify({
+        path: '/images',
+        state: location.state
+      }));
+      navigate('/signin');
+      return;
+    }
+
     const limited = files.slice(0, 5).map(f => ({
       url: URL.createObjectURL(f),
       name: f.name
@@ -35,7 +43,7 @@ export default function ImageHome() {
     return () => {
       limited.forEach(p => URL.revokeObjectURL(p.url));
     };
-  }, [files]);
+  }, [files, navigate, location.state]);
 
   const handleFileChange = (e) => {
     setFiles(Array.from(e.target.files));
@@ -90,22 +98,51 @@ export default function ImageHome() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('taskName', taskName);
-    formData.append('labelClasses', JSON.stringify(labelClasses));
-    files.forEach(f => formData.append('files', f));
-
     try {
-      const res = await fetch('http://localhost:4000/api/upload', {
+      // First upload the files
+      const formData = new FormData();
+      formData.append('taskName', taskName);
+      formData.append('labelClasses', JSON.stringify(labelClasses));
+      files.forEach(f => formData.append('files', f));
+
+      const uploadRes = await fetch('http://localhost:4000/api/upload', {
         method: 'POST',
         body: formData
       });
-      const data = await res.json();
-      setFolderData(data);
+
+      if (!uploadRes.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const uploadData = await uploadRes.json();
+
+      // Then create the task
+      const userSession = JSON.parse(localStorage.getItem('user'));
+      const taskType = segmentationMode ? 'segmentation' :
+        classificationMode ? 'classification' :
+          'detection';
+
+      const taskRes = await fetch('http://localhost:4000/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userSession.id,
+          taskName: taskName,
+          folderId: uploadData.folderId,
+          taskType: taskType
+        })
+      });
+
+      if (!taskRes.ok) {
+        throw new Error('Failed to create task');
+      }
+
+      const taskData = await taskRes.json();
+      setFolderData({ ...uploadData, taskId: taskData.taskId });
       alert('Upload success!');
     } catch (err) {
-      console.error(err);
-      alert('Upload error');
+      console.error('Error:', err);
+      alert('Upload error: ' + err.message);
     }
   };
 
@@ -123,7 +160,6 @@ export default function ImageHome() {
   return (
     <div className="image-home-container">
       <h2>Create a New Image Annotation Task</h2>
-
       <div className="form-area">
         <label>Task Name</label>
         <input
@@ -189,7 +225,7 @@ export default function ImageHome() {
             ? 'Go to Segmentation'
             : classificationMode
               ? 'Go to Classification'
-              : 'Go to Annotate'}
+              : 'Go to Detection'}
         </button>
       </div>
     </div>

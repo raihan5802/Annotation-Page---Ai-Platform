@@ -1,21 +1,50 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+// src/pages/Home.js
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import HomeTopBar from '../components/HomeTopBar';
 import './Home.css';
 
 function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const userSession = localStorage.getItem('user');
+    setIsAuthenticated(!!userSession);
+  }, []);
+
+  const handleNavigation = (path, state) => {
+    if (!isAuthenticated) {
+      localStorage.setItem('redirectAfterLogin', JSON.stringify({
+        path,
+        state
+      }));
+      navigate('/signin');
+    } else {
+      navigate(path, { state });
+    }
+  };
 
   const handleGoImages = () => {
-    navigate('/images', { state: { segmentationMode: false, classificationMode: false } });
+    handleNavigation('/images', {
+      segmentationMode: false,
+      classificationMode: false
+    });
   };
 
   const handleGoSegmentation = () => {
-    navigate('/images', { state: { segmentationMode: true, classificationMode: false } });
+    handleNavigation('/images', {
+      segmentationMode: true,
+      classificationMode: false
+    });
   };
 
   const handleGoClassification = () => {
-    navigate('/images', { state: { segmentationMode: false, classificationMode: true } });
+    handleNavigation('/images', {
+      segmentationMode: false,
+      classificationMode: true
+    });
   };
 
   return (

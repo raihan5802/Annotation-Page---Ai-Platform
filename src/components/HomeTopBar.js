@@ -63,7 +63,7 @@ function HomeTopBar() {
                         {isDropdownOpen && (
                             <div className="dropdown">
                                 <div className="dropdown-item">Account</div>
-                                <div className="dropdown-item">Tasks</div>
+                                <div className="dropdown-item" onClick={() => navigate('/tasks')}>Tasks</div>
                                 <div className="dropdown-item" onClick={handleSignOut}>
                                     Logout
                                 </div>

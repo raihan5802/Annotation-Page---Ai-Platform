@@ -14,7 +14,14 @@ app.use(express.json());
 // Serve /uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Multer storage => new folder per task
+// Initialize tasks.csv if it doesn't exist
+const tasksFilePath = path.join(__dirname, 'tasks.csv');
+// Modify the tasks.csv header in server.js
+if (!fs.existsSync(tasksFilePath)) {
+  fs.writeFileSync(tasksFilePath, 'task_id,user_id,task_name,folder_path,task_type,created_at\n');
+}
+
+// Multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let folderId = req.body.folderId;
@@ -30,9 +37,10 @@ const storage = multer.diskStorage({
     cb(null, file.originalname);
   }
 });
+
 const upload = multer({ storage });
 
-// /api/upload => upload images
+// File upload endpoint
 app.post('/api/upload', upload.array('files'), (req, res) => {
   const folderId = req.body.folderId;
   const taskName = req.body.taskName || '';
@@ -55,16 +63,138 @@ app.post('/api/upload', upload.array('files'), (req, res) => {
   });
 });
 
-// /api/annotations => Save final
-app.post('/api/annotations', (req, res) => {
-  fs.writeFileSync('annotations.json', JSON.stringify(req.body, null, 2));
-  console.log('Annotations saved to annotations.json');
-  res.json({ message: 'Annotations saved' });
+// Create new task
+// Update the task creation endpoint
+app.post('/api/tasks', (req, res) => {
+  try {
+    const { userId, taskName, folderId, taskType } = req.body;
+    const taskId = uuidv4();
+    const folderPath = path.join('uploads', folderId);
+    const createdAt = new Date().toISOString();
+
+    const taskLine = `${taskId},${userId},${taskName},${folderPath},${taskType},${createdAt}\n`;
+
+    fs.appendFileSync(tasksFilePath, taskLine);
+
+    res.json({
+      taskId,
+      message: 'Task created successfully'
+    });
+  } catch (error) {
+    console.error('Error creating task:', error);
+    res.status(500).json({ error: 'Failed to create task' });
+  }
 });
 
+// Get user's tasks
+app.get('/api/tasks/:userId', (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const tasksContent = fs.readFileSync(tasksFilePath, 'utf8');
+    const tasks = tasksContent
+      .trim()
+      .split('\n')
+      .slice(1) // Skip header row
+      .map(line => {
+        const [task_id, user_id, task_name, folder_path, created_at] = line.split(',');
+        return { task_id, user_id, task_name, folder_path, created_at };
+      })
+      .filter(task => task.user_id === userId);
+
+    // For each task, check if annotations exist
+    const tasksWithStatus = tasks.map(task => {
+      const annotationsPath = path.join(__dirname, task.folder_path, 'annotations.json');
+      const hasAnnotations = fs.existsSync(annotationsPath);
+      if (hasAnnotations) {
+        const annotations = JSON.parse(fs.readFileSync(annotationsPath, 'utf8'));
+        return { ...task, annotations, status: 'in_progress' };
+      }
+      return { ...task, annotations: {}, status: 'new' };
+    });
+
+    res.json(tasksWithStatus);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+// Add this new endpoint in server.js
+app.get('/api/tasks/:taskId/files', (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    // Read tasks.csv to get the folder path
+    const tasksContent = fs.readFileSync(tasksFilePath, 'utf8');
+    const tasks = tasksContent
+      .trim()
+      .split('\n')
+      .slice(1)
+      .map(line => {
+        const [task_id, user_id, task_name, folder_path, task_type, created_at] = line.split(',');
+        return { task_id, folder_path };
+      });
+
+    const task = tasks.find(t => t.task_id === taskId);
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Get all image files
+    const folderPath = path.join(__dirname, task.folder_path);
+    const files = fs.readdirSync(folderPath)
+      .filter(file => !file.endsWith('annotations.json'))
+      .map(filename => ({
+        originalname: filename,
+        url: `http://localhost:${PORT}/${task.folder_path}/${filename}`
+      }));
+
+    // Get annotations if they exist
+    let annotations = {};
+    const annotationsPath = path.join(folderPath, 'annotations.json');
+    if (fs.existsSync(annotationsPath)) {
+      const annotationsContent = fs.readFileSync(annotationsPath, 'utf8');
+      annotations = JSON.parse(annotationsContent);
+    }
+
+    res.json({
+      files,
+      annotations: annotations.annotations || {},
+      labelClasses: annotations.labelClasses || []
+    });
+  } catch (error) {
+    console.error('Error getting task files:', error);
+    res.status(500).json({ error: 'Failed to get task files' });
+  }
+});
+
+// Save annotations
+app.post('/api/annotations', (req, res) => {
+  try {
+    const { folderId, taskName, labelClasses, annotations } = req.body;
+    const folderPath = path.join(__dirname, 'uploads', folderId);
+    const annotationsPath = path.join(folderPath, 'annotations.json');
+
+    fs.writeFileSync(annotationsPath, JSON.stringify({
+      taskName,
+      labelClasses,
+      annotations,
+      lastUpdated: new Date().toISOString()
+    }, null, 2));
+
+    console.log('Annotations saved to', annotationsPath);
+    res.json({ message: 'Annotations saved' });
+  } catch (error) {
+    console.error('Error saving annotations:', error);
+    res.status(500).json({ error: 'Failed to save annotations' });
+  }
+});
+
+// User authentication endpoints
 app.post('/api/signup', (req, res) => {
   const { username, email, password } = req.body;
-  const user = { id: Date.now(), username, email, password };
+  const user = { id: Date.now().toString(), username, email, password };
   const csvLine = `${user.id},${user.username},${user.email},${user.password}\n`;
 
   const filePath = path.join(__dirname, 'users.csv');
@@ -104,7 +234,7 @@ app.post('/api/signin', (req, res) => {
   }
 });
 
-
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

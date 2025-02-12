@@ -21,7 +21,12 @@ export default function Classification() {
     // Selected status per image (keyed by file URL)
     const [selected, setSelected] = useState({});
     // Classification annotations: mapping file URL to assigned label
-    const [annotations, setAnnotations] = useState({});
+    const [annotations, setAnnotations] = useState(() => {
+        if (folderInfo && folderInfo.annotations) {
+            return folderInfo.annotations;
+        }
+        return {};
+    });
     // Modal state for assigning a class
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedClass, setSelectedClass] = useState(labelClasses[0]?.name || '');
