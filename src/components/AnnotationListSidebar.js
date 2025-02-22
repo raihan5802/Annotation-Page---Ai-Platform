@@ -1,6 +1,6 @@
 // AnnotationListSidebar.js
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './AnnotationListSidebar.css';
 
 // SVG Icons
@@ -12,24 +12,18 @@ const OpacityIcon = () => (
   </svg>
 );
 
-const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"/>
-    <line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-);
-
 export default function AnnotationListSidebar({
   annotations,
   onDeleteAnnotation,
   onUpdateAnnotation,
   labelClasses,
-  onOpenOpacityControl,
-  showOpacityControl,
   selectedAnnotationIndex,
+  setSelectedAnnotationIndex,
   currentShapes,
-  onCloseOpacityControl,
 }) {
+  // State for global opacity value
+  const [globalOpacityValue, setGlobalOpacityValue] = useState(100);
+
   // Handle label dropdown changes for a specific annotation
   const handleLabelDropdown = (idx, newLabel) => {
     const labelColor =
@@ -41,11 +35,54 @@ export default function AnnotationListSidebar({
   // Handle click on annotation to select it
   const handleAnnotationClick = (idx) => {
     if (selectedAnnotationIndex === idx) {
-      onCloseOpacityControl();
+      setSelectedAnnotationIndex(null);
     } else {
-      onOpenOpacityControl(idx);
+      setSelectedAnnotationIndex(idx);
     }
   };
+
+  // Handle global opacity change
+  const handleGlobalOpacityChange = (value) => {
+    setGlobalOpacityValue(value);
+    const decimal = value / 100;
+
+    if (selectedAnnotationIndex !== null) {
+      // Update only the selected annotation
+      onUpdateAnnotation(selectedAnnotationIndex, { opacity: decimal });
+    } else {
+      // Update all annotations
+      // Important: Create a batch of updates to apply simultaneously
+      const updatedAnnotations = annotations.map((ann, index) => {
+        return { ...ann, opacity: decimal };
+      });
+
+      // Apply all updates at once to avoid overwriting
+      updatedAnnotations.forEach((updatedAnn, index) => {
+        onUpdateAnnotation(index, { opacity: decimal });
+      });
+    }
+  };
+
+  // Update global opacity slider when selected annotation changes
+  useEffect(() => {
+    if (selectedAnnotationIndex !== null && currentShapes[selectedAnnotationIndex]) {
+      const currentOpacity = currentShapes[selectedAnnotationIndex].opacity !== undefined
+        ? Math.round(currentShapes[selectedAnnotationIndex].opacity * 100)
+        : 100;
+      setGlobalOpacityValue(currentOpacity);
+    } else {
+      // If no annotation is selected, check if all annotations have the same opacity
+      if (annotations.length > 0) {
+        const opacities = annotations.map(ann => ann.opacity !== undefined ? Math.round(ann.opacity * 100) : 100);
+
+        // If all annotations have the same opacity, use that value; otherwise use 100%
+        const allSame = opacities.every(opacity => opacity === opacities[0]);
+        setGlobalOpacityValue(allSame ? opacities[0] : 100);
+      } else {
+        setGlobalOpacityValue(100);
+      }
+    }
+  }, [selectedAnnotationIndex, currentShapes, annotations]);
 
   return (
     <div className="anno-sidebar">
@@ -55,10 +92,10 @@ export default function AnnotationListSidebar({
         const label = ann.label || '';
         const opacity = ann.opacity !== undefined ? ann.opacity : 1.0;
         const opacityPercent = Math.round(opacity * 100);
-        
+
         return (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className={`anno-item ${selectedAnnotationIndex === i ? 'active' : ''}`}
             onClick={() => handleAnnotationClick(i)}
           >
@@ -76,6 +113,7 @@ export default function AnnotationListSidebar({
               <select
                 value={label}
                 onChange={(e) => handleLabelDropdown(i, e.target.value)}
+                onClick={(e) => e.stopPropagation()}
               >
                 {labelClasses.map((lc, idx2) => (
                   <option key={idx2} value={lc.name}>
@@ -83,8 +121,11 @@ export default function AnnotationListSidebar({
                   </option>
                 ))}
               </select>
-              <button 
-                onClick={() => onDeleteAnnotation(i)}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteAnnotation(i);
+                }}
                 className="delete-button"
               >
                 Del
@@ -93,68 +134,40 @@ export default function AnnotationListSidebar({
           </div>
         );
       })}
-      
-      {/* Floating Opacity Control */}
-      {showOpacityControl && selectedAnnotationIndex !== null && (
-        <FloatingOpacityControl
-          selectedAnnotationIndex={selectedAnnotationIndex} 
-          currentShapes={currentShapes}
-          onUpdateAnnotation={onUpdateAnnotation}
-          onClose={onCloseOpacityControl}
-        />
-      )}
+
+      {/* Appearance Section */}
+      <div className="appearance-section">
+        <h3>Appearance</h3>
+        <div className="appearance-control">
+          <div className="appearance-label">
+            <OpacityIcon />
+            <span>
+              {selectedAnnotationIndex !== null
+                ? "Selected Annotation Opacity"
+                : "Global Opacity"}
+            </span>
+          </div>
+          <div className="opacity-slider-container">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={globalOpacityValue}
+              onChange={(e) => handleGlobalOpacityChange(parseInt(e.target.value))}
+              className="opacity-slider"
+            />
+            <div className="opacity-value">{globalOpacityValue}%</div>
+          </div>
+          {selectedAnnotationIndex !== null && (
+            <div className="preview-box"
+              style={{
+                backgroundColor: currentShapes[selectedAnnotationIndex]?.color || '#000000',
+                opacity: globalOpacityValue / 100
+              }}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
-
-const FloatingOpacityControl = ({ selectedAnnotationIndex, currentShapes, onUpdateAnnotation, onClose }) => {
-  const [opacityValue, setOpacityValue] = React.useState(100);
-
-  React.useEffect(() => {
-    if (selectedAnnotationIndex !== null) {
-      const currentOpacity = currentShapes[selectedAnnotationIndex].opacity !== undefined
-        ? Math.round(currentShapes[selectedAnnotationIndex].opacity * 100)
-        : 100;
-      setOpacityValue(currentOpacity);
-    }
-  }, [selectedAnnotationIndex, currentShapes]);
-
-  const handleOpacityChange = (value) => {
-    setOpacityValue(value);
-    const decimal = value / 100;
-    onUpdateAnnotation(selectedAnnotationIndex, { opacity: decimal });
-  };
-
-  if (selectedAnnotationIndex === null) return null;
-  
-  return (
-    <div className="floating-opacity-control">
-      <div className="opacity-control-header">
-        <h4>Adjust Opacity</h4>
-        <button onClick={onClose} className="close-button">
-          <CloseIcon />
-        </button>
-      </div>
-      
-      <div className="opacity-slider-container">
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={opacityValue}
-          onChange={(e) => handleOpacityChange(parseInt(e.target.value))}
-          className="opacity-slider"
-        />
-        <div className="opacity-value">{opacityValue}%</div>
-      </div>
-      
-      <div 
-        className="preview-box"
-        style={{ 
-          backgroundColor: currentShapes[selectedAnnotationIndex]?.color || '#000000',
-          opacity: opacityValue / 100
-        }}
-      />
-    </div>
-  );
-};

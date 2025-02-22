@@ -9,108 +9,108 @@ import './Detection.css';
 // SVG Icon Components
 const UndoIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 14L4 9l5-5"/>
-    <path d="M4 9h10c3 0 7 1 7 6v1"/>
+    <path d="M9 14L4 9l5-5" />
+    <path d="M4 9h10c3 0 7 1 7 6v1" />
   </svg>
 );
 
 const RedoIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 14l5-5-5-5"/>
-    <path d="M20 9H10C7 9 3 10 3 15v1"/>
+    <path d="M15 14l5-5-5-5" />
+    <path d="M20 9H10C7 9 3 10 3 15v1" />
   </svg>
 );
 
 const SaveIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-    <polyline points="17 21 17 13 7 13 7 21"/>
-    <polyline points="7 3 7 8 15 8"/>
+    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
   </svg>
 );
 
 const BackgroundIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-    <path d="M12 8v8"/>
-    <path d="M8 12h8"/>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <path d="M12 8v8" />
+    <path d="M8 12h8" />
   </svg>
 );
 
 const MoveIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="5 9 2 12 5 15"/>
-    <polyline points="9 5 12 2 15 5"/>
-    <polyline points="15 19 12 22 9 19"/>
-    <polyline points="19 9 22 12 19 15"/>
-    <line x1="2" y1="12" x2="22" y2="12"/>
-    <line x1="12" y1="2" x2="12" y2="22"/>
+    <polyline points="5 9 2 12 5 15" />
+    <polyline points="9 5 12 2 15 5" />
+    <polyline points="15 19 12 22 9 19" />
+    <polyline points="19 9 22 12 19 15" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <line x1="12" y1="2" x2="12" y2="22" />
   </svg>
 );
 
 const BboxIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
   </svg>
 );
 
 const PolygonIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 3L3 12l4 8h10l4-8z"/>
+    <path d="M12 3L3 12l4 8h10l4-8z" />
   </svg>
 );
 
 const PolylineIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 7 9 13 13 9 21 17"/>
-    <circle cx="3" cy="7" r="2"/>
-    <circle cx="9" cy="13" r="2"/>
-    <circle cx="13" cy="9" r="2"/>
-    <circle cx="21" cy="17" r="2"/>
+    <polyline points="3 7 9 13 13 9 21 17" />
+    <circle cx="3" cy="7" r="2" />
+    <circle cx="9" cy="13" r="2" />
+    <circle cx="13" cy="9" r="2" />
+    <circle cx="21" cy="17" r="2" />
   </svg>
 );
 
 const PointIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <circle cx="12" cy="12" r="3"/>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
 const EllipseIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
+    <circle cx="12" cy="12" r="10" />
   </svg>
 );
 
 const PlusIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19"/>
-    <line x1="5" y1="12" x2="19" y2="12"/>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 );
 
 const PaletteIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="13.5" cy="6.5" r="2.5"/>
-    <circle cx="17.5" cy="10.5" r="2.5"/>
-    <circle cx="8.5" cy="7.5" r="2.5"/>
-    <circle cx="6.5" cy="12.5" r="2.5"/>
-    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.688h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+    <circle cx="13.5" cy="6.5" r="2.5" />
+    <circle cx="17.5" cy="10.5" r="2.5" />
+    <circle cx="8.5" cy="7.5" r="2.5" />
+    <circle cx="6.5" cy="12.5" r="2.5" />
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.688h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
   </svg>
 );
 
 const ToolsIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
   </svg>
 );
 
 const CenterIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" y1="8" x2="12" y2="16"/>
-    <line x1="8" y1="12" x2="16" y2="12"/>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="16" />
+    <line x1="8" y1="12" x2="16" y2="12" />
   </svg>
 );
 
@@ -119,13 +119,6 @@ const OpacityIcon = () => (
     <path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z" />
     <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z" />
     <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
-  </svg>
-);
-
-const CloseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"/>
-    <line x1="6" y1="6" x2="18" y2="18"/>
   </svg>
 );
 
@@ -160,7 +153,7 @@ export default function Detection() {
   const [isSaving, setIsSaving] = useState(false);
   const [showHelperText, setShowHelperText] = useState(false);
   const [helperText, setHelperText] = useState('');
-  
+
   // State for image initial positioning
   const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
@@ -184,15 +177,8 @@ export default function Detection() {
   const [pendingTool, setPendingTool] = useState('');
   const [currentPointsLimit, setCurrentPointsLimit] = useState(0);
 
-  /// State for opacity control
-  const [showOpacityControl, setShowOpacityControl] = useState(false);
+  // State for selected annotation - simplified from original code
   const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
-  const [opacityValue, setOpacityValue] = useState(100);
-  const [showAnnotationContextMenu, setShowAnnotationContextMenu] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
-  
-  // Ref for the opacity slider
-  const opacitySliderRef = useRef(null);
 
   // Whenever shapes change, store old state in undoStack
   const handleAnnotationsChange = (newShapes) => {
@@ -204,6 +190,12 @@ export default function Detection() {
     setRedoStack([]);
     setAnnotations(updated);
   };
+
+  // useEffect to reset selection on image change
+  useEffect(() => {
+    // Reset selectedAnnotationIndex when changing images
+    setSelectedAnnotationIndex(null);
+  }, [currentIndex, currentFileUrl]);
 
   // Display helper text when tool is changed
   useEffect(() => {
@@ -232,13 +224,13 @@ export default function Detection() {
     }
   }, []);
 
-  // Handle clicking outside of context menu to close it
+  // Handle clicking outside to deselect annotations
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showAnnotationContextMenu && 
-          !event.target.closest('.annotation-context-menu') && 
-          !event.target.closest('.anno-item')) {
-        setShowAnnotationContextMenu(false);
+      // This handles clicks outside the sidebar and canvas
+      if (!event.target.closest('.anno-sidebar') &&
+        !event.target.closest('.canvas-area')) {
+        setSelectedAnnotationIndex(null);
       }
     };
 
@@ -246,28 +238,7 @@ export default function Detection() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showAnnotationContextMenu]);
-
-  // Update annotation opacity in real-time as slider changes
-  useEffect(() => {
-    if (selectedAnnotationIndex !== null && showOpacityControl) {
-      const decimal = opacityValue / 100;
-      const updatedAnnotations = [...currentShapes];
-      updatedAnnotations[selectedAnnotationIndex] = {
-        ...updatedAnnotations[selectedAnnotationIndex],
-        opacity: decimal
-      };
-      
-      // We don't want to trigger a full undo stack update for preview,
-      // so we update the annotations object directly for visualization
-      const previewUpdate = {
-        ...annotations,
-        [currentFileUrl]: updatedAnnotations
-      };
-      
-      setAnnotations(previewUpdate);
-    }
-  }, [opacityValue, showOpacityControl]);
+  }, []);
 
   const showHelper = (text) => {
     setHelperText(text);
@@ -275,7 +246,7 @@ export default function Detection() {
     if (canvasHelperRef.current) {
       canvasHelperRef.current.classList.add('visible');
     }
-    
+
     // Hide helper text after 3 seconds
     setTimeout(() => {
       if (canvasHelperRef.current) {
@@ -294,52 +265,26 @@ export default function Detection() {
         if (canvasAreaRef.current) {
           const canvasWidth = canvasAreaRef.current.offsetWidth;
           const canvasHeight = canvasAreaRef.current.offsetHeight;
-          
+
+          console.log("Canvas dimensions:", canvasWidth, canvasHeight);
+          console.log("Image dimensions:", img.width, img.height);
+
           // Calculate position to center the image
           const xPos = Math.max(0, (canvasWidth - img.width) / 2);
           const yPos = Math.max(0, (canvasHeight - img.height) / 2);
-          
+
+          console.log("New image position:", xPos, yPos);
+
           // Set the position (with a minimum of 0 to avoid negative positioning)
-          setImagePosition({ 
-            x: Math.max(0, xPos), 
-            y: Math.max(0, yPos) 
+          setImagePosition({
+            x: Math.max(0, xPos),
+            y: Math.max(0, yPos)
           });
-          
+
           showHelper('Image centered');
         }
       };
     }
-  };
-
-  const openOpacityControl = (index, event) => {
-    setSelectedAnnotationIndex(index);
-    setShowOpacityControl(true);
-  };
-  
-  const closeOpacityControl = () => {
-    setShowOpacityControl(false);
-    setSelectedAnnotationIndex(null);
-  };
-  
-  const handleUpdateAnnotationOpacity = (index, changes) => {
-    const arr = [...currentShapes];
-    arr[index] = { ...arr[index], ...changes };
-    handleAnnotationsChange(arr);
-  };
-
-  // Open context menu for annotation
-  const openAnnotationContextMenu = (index, event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const rect = event.currentTarget.getBoundingClientRect();
-    setContextMenuPosition({
-      x: rect.left,
-      y: rect.bottom
-    });
-    
-    setSelectedAnnotationIndex(index);
-    setShowAnnotationContextMenu(true);
   };
 
   // -------------- Undo / Redo --------------
@@ -367,6 +312,14 @@ export default function Detection() {
     arr.splice(index, 1);
     handleAnnotationsChange(arr);
     showHelper('Annotation deleted');
+
+    // Reset selected annotation if the deleted one was selected
+    if (selectedAnnotationIndex === index) {
+      setSelectedAnnotationIndex(null);
+    } else if (selectedAnnotationIndex > index) {
+      // Adjust selected index if it was after the deleted one
+      setSelectedAnnotationIndex(selectedAnnotationIndex - 1);
+    }
   };
 
   const handleUpdateAnnotation = (index, changes) => {
@@ -515,10 +468,8 @@ export default function Detection() {
 
       if (key === 'Escape') {
         // Close open controls on Escape
-        if (showOpacityControl) {
-          closeOpacityControl();
-        } else if (showAnnotationContextMenu) {
-          setShowAnnotationContextMenu(false);
+        if (selectedAnnotationIndex !== null) {
+          setSelectedAnnotationIndex(null);
         } else {
           const event = new CustomEvent('cancel-annotation');
           window.dispatchEvent(event);
@@ -526,13 +477,8 @@ export default function Detection() {
       }
       if (key === 'ArrowRight') {
         handleNext();
-      } 
+      }
       if (key === 'ArrowLeft') {
-        // Add some logging to help diagnose
-        console.log('Left Arrow Pressed', {
-          currentIndex,
-          files: files.length
-        });
         handlePrev();
       }
       if (e.ctrlKey && (key === 'z' || key === 'Z')) {
@@ -545,7 +491,7 @@ export default function Detection() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [annotations, undoStack, redoStack, showOpacityControl, showAnnotationContextMenu]);
+  }, [annotations, undoStack, redoStack, selectedAnnotationIndex]);
 
   // -------------- Add Label Modal --------------
   const [showAddLabelModal, setShowAddLabelModal] = useState(false);
@@ -639,433 +585,277 @@ export default function Detection() {
   // -------------- When annotation finishes => switch to move --------------
   const handleFinishShape = () => {
     setSelectedTool('move');
+    setSelectedAnnotationIndex(null);
     showHelper('Annotation completed');
   };
 
   // Function to handle tool changes so that for polygon, polyline, and point a modal is shown
- const handleToolChange = (tool) => {
-  if (['polygon', 'polyline', 'point'].includes(tool)) {
-    setPendingTool(tool);
-    setShowPointsLimitModal(true);
-  } else {
-    setSelectedTool(tool);
-  }
-};
+  const handleToolChange = (tool) => {
+    if (['polygon', 'polyline', 'point'].includes(tool)) {
+      setPendingTool(tool);
+      setShowPointsLimitModal(true);
+    } else {
+      setSelectedTool(tool);
+    }
+  };
 
-// Get the current label color
-const activeLabelColor = localLabelClasses.find(
-  (l) => l.name === selectedLabelClass
-)?.color || '#ff0000';
+  // Get the current label color
+  const activeLabelColor = localLabelClasses.find(
+    (l) => l.name === selectedLabelClass
+  )?.color || '#ff0000';
 
-// Customize AnnotationListSidebar to support opacity control and context menu
-const CustomAnnotationListSidebar = (props) => {
   return (
-    <div className="anno-sidebar">
-      <h3>Annotations</h3>
-      {props.annotations.length === 0 && <p>No annotations yet.</p>}
-      {props.annotations.map((ann, i) => {
-        const label = ann.label || '';
-        const opacity = ann.opacity !== undefined ? ann.opacity : 1.0;
-        const opacityPercent = Math.round(opacity * 100);
-        
-        return (
-          <div 
-            key={i} 
-            className={`anno-item ${selectedAnnotationIndex === i ? 'active' : ''}`}
-            onClick={() => setSelectedAnnotationIndex(i)}
-            onContextMenu={(e) => openAnnotationContextMenu(i, e)}
-          >
-            <div>
-              <span className="shape-type">{ann.type.toUpperCase()}</span>{' '}
-              <span className="shape-label">{label}</span>
-              {opacityPercent !== 100 && (
-                <span className="opacity-label">({opacityPercent}%)</span>
-              )}
-              {ann.instanceId && (
-                <span style={{ marginLeft: 8 }}>({ann.instanceId})</span>
-              )}
-            </div>
-            <div className="anno-actions">
-              <select
-                value={label}
-                onChange={(e) => props.onUpdateAnnotation(i, { 
-                  label: e.target.value,
-                  color: localLabelClasses.find(lc => lc.name === e.target.value)?.color || '#ff0000'
-                })}
+    <div className="annotate-container">
+      <AnnotationTopBar
+        onHome={() => navigate('/')}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onSave={handleSave}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onExport={() => { }}
+        currentIndex={currentIndex}
+        total={files.length}
+        taskName={taskName}
+      />
+
+      <div className="annotate-actions">
+        <button onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)">
+          <UndoIcon /> Undo
+        </button>
+        <button onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)">
+          <RedoIcon /> Redo
+        </button>
+        <div className="divider"></div>
+        <button onClick={handleSave} className="primary" disabled={isSaving} title="Save (Ctrl+S)">
+          <SaveIcon /> {isSaving ? 'Saving...' : 'Save'}
+        </button>
+        <button onClick={handleFillBackground} title="Fill Background">
+          <BackgroundIcon /> Background
+        </button>
+        <button onClick={handleCenterImage} title="Center Image (C)">
+          <CenterIcon /> Center
+        </button>
+      </div>
+
+      <div className="annotate-main">
+        {/* Tools Sidebar */}
+        <div className="tools-sidebar">
+          <div className="sidebar-section">
+            <h3><ToolsIcon /> Tools</h3>
+            <div className="tool-grid">
+              <div
+                className={`tool-button ${selectedTool === 'move' ? 'active' : ''}`}
+                onClick={() => setSelectedTool('move')}
+                title="Move Tool (M)"
               >
-                {props.labelClasses.map((lc, idx2) => (
-                  <option key={idx2} value={lc.name}>
+                <div className="tool-icon"><MoveIcon /></div>
+                <div className="tool-name">Move</div>
+                <div className="keyboard-hint">M</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'bbox' ? 'active' : ''}`}
+                onClick={() => setSelectedTool('bbox')}
+                title="Bounding Box Tool (B)"
+              >
+                <div className="tool-icon"><BboxIcon /></div>
+                <div className="tool-name">BBox</div>
+                <div className="keyboard-hint">B</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'polygon' ? 'active' : ''}`}
+                onClick={() => handleToolChange('polygon')}
+                title="Polygon Tool (P)"
+              >
+                <div className="tool-icon"><PolygonIcon /></div>
+                <div className="tool-name">Polygon</div>
+                <div className="keyboard-hint">P</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'polyline' ? 'active' : ''}`}
+                onClick={() => handleToolChange('polyline')}
+                title="Polyline Tool (L)"
+              >
+                <div className="tool-icon"><PolylineIcon /></div>
+                <div className="tool-name">Polyline</div>
+                <div className="keyboard-hint">L</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'point' ? 'active' : ''}`}
+                onClick={() => handleToolChange('point')}
+                title="Point Tool (O)"
+              >
+                <div className="tool-icon"><PointIcon /></div>
+                <div className="tool-name">Point</div>
+                <div className="keyboard-hint">O</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'ellipse' ? 'active' : ''}`}
+                onClick={() => setSelectedTool('ellipse')}
+                title="Ellipse Tool (E)"
+              >
+                <div className="tool-icon"><EllipseIcon /></div>
+                <div className="tool-name">Ellipse</div>
+                <div className="keyboard-hint">E</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h3><PaletteIcon /> Active Label</h3>
+            <div className="label-selection">
+              <select
+                value={selectedLabelClass}
+                onChange={(e) => setSelectedLabelClass(e.target.value)}
+              >
+                {localLabelClasses.map((lc, i) => (
+                  <option key={i} value={lc.name}>
                     {lc.name}
                   </option>
                 ))}
               </select>
-              <button 
-                onClick={(e) => { e.stopPropagation(); openOpacityControl(i, e); }} 
-                title="Adjust opacity"
-                className="opacity-button"
-              >
-                <OpacityIcon />
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); props.onDeleteAnnotation(i); }}
-                className="delete-button"
-              >
-                Del
+              <button onClick={() => setShowAddLabelModal(true)}>
+                <PlusIcon /> Add Label
               </button>
             </div>
-          </div>
-        );
-      })}
-      
-      {/* Annotation Context Menu */}
-      {showAnnotationContextMenu && selectedAnnotationIndex !== null && (
-        <div 
-          className="annotation-context-menu"
-          style={{
-            position: 'fixed',
-            left: `${contextMenuPosition.x}px`,
-            top: `${contextMenuPosition.y}px`,
-            zIndex: 1000
-          }}
-        >
-          <div 
-            className="context-menu-item"
-            onClick={() => {
-              openOpacityControl(selectedAnnotationIndex);
-              setShowAnnotationContextMenu(false);
-            }}
-          >
-            <OpacityIcon /> Adjust Opacity
-          </div>
-          <div 
-            className="context-menu-item"
-            onClick={() => {
-              handleDeleteAnnotation(selectedAnnotationIndex);
-              setShowAnnotationContextMenu(false);
-            }}
-          >
-            Delete Annotation
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Floating opacity control component
-const FloatingOpacityControl = () => {
-  if (!showOpacityControl || selectedAnnotationIndex === null) return null;
-  
-  return (
-    <div 
-      className="floating-opacity-control"
-      style={{
-        position: 'fixed',
-        left: `${contextMenuPosition.x}px`,
-        top: `${contextMenuPosition.y}px`,
-        zIndex: 1000,
-        background: 'white',
-        padding: '12px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
-        width: '250px'
-      }}
-    >
-      <div className="opacity-control-header">
-        <h4 style={{ margin: '0 0 8px 0' }}>Adjust Opacity</h4>
-        <button 
-          onClick={closeOpacityControl} 
-          className="close-button"
-          style={{
-            position: 'absolute',
-            right: '8px',
-            top: '8px',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer'
-          }}
-        >
-          <CloseIcon />
-        </button>
-      </div>
-      
-      <div className="opacity-slider-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <input
-          ref={opacitySliderRef}
-          type="range"
-          min="0"
-          max="100"
-          value={opacityValue}
-          onChange={(e) => setOpacityValue(parseInt(e.target.value))}
-          className="opacity-slider"
-          style={{ flex: 1 }}
-        />
-        <div className="opacity-value" style={{ width: '40px', textAlign: 'right' }}>{opacityValue}%</div>
-      </div>
-      
-      <div className="preview-box" style={{ 
-        marginTop: '10px',
-        height: '30px',
-        backgroundColor: currentShapes[selectedAnnotationIndex]?.color || '#000000',
-        opacity: opacityValue / 100,
-        borderRadius: '4px'
-      }} />
-    </div>
-  );
-};
-
-return (
-  <div className="annotate-container">
-    <AnnotationTopBar
-      onHome={() => navigate('/')}
-      onPrev={handlePrev}
-      onNext={handleNext}
-      onSave={handleSave}
-      onZoomIn={handleZoomIn}
-      onZoomOut={handleZoomOut}
-      onExport={() => {}}
-      currentIndex={currentIndex}
-      total={files.length}
-      taskName={taskName}
-    />
-
-    <div className="annotate-actions">
-      <button onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)">
-        <UndoIcon /> Undo
-      </button>
-      <button onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)">
-        <RedoIcon /> Redo
-      </button>
-      <div className="divider"></div>
-      <button onClick={handleSave} className="primary" disabled={isSaving} title="Save (Ctrl+S)">
-        <SaveIcon /> {isSaving ? 'Saving...' : 'Save'}
-      </button>
-      <button onClick={handleFillBackground} title="Fill Background">
-        <BackgroundIcon /> Background
-      </button>
-      <button onClick={handleCenterImage} title="Center Image (C)">
-        <CenterIcon /> Center
-      </button>
-    </div>
-
-    <div className="annotate-main">
-      {/* Tools Sidebar */}
-      <div className="tools-sidebar">
-        <div className="sidebar-section">
-          <h3><ToolsIcon /> Tools</h3>
-          <div className="tool-grid">
-            <div 
-              className={`tool-button ${selectedTool === 'move' ? 'active' : ''}`}
-              onClick={() => setSelectedTool('move')}
-              title="Move Tool (M)"
-            >
-              <div className="tool-icon"><MoveIcon /></div>
-              <div className="tool-name">Move</div>
-              <div className="keyboard-hint">M</div>
-            </div>
-            <div 
-              className={`tool-button ${selectedTool === 'bbox' ? 'active' : ''}`}
-              onClick={() => setSelectedTool('bbox')}
-              title="Bounding Box Tool (B)"
-            >
-              <div className="tool-icon"><BboxIcon /></div>
-              <div className="tool-name">BBox</div>
-              <div className="keyboard-hint">B</div>
-            </div>
-            <div 
-              className={`tool-button ${selectedTool === 'polygon' ? 'active' : ''}`}
-              onClick={() => handleToolChange('polygon')}
-              title="Polygon Tool (P)"
-            >
-              <div className="tool-icon"><PolygonIcon /></div>
-              <div className="tool-name">Polygon</div>
-              <div className="keyboard-hint">P</div>
-            </div>
-            <div 
-              className={`tool-button ${selectedTool === 'polyline' ? 'active' : ''}`}
-              onClick={() => handleToolChange('polyline')}
-              title="Polyline Tool (L)"
-            >
-              <div className="tool-icon"><PolylineIcon /></div>
-              <div className="tool-name">Polyline</div>
-              <div className="keyboard-hint">L</div>
-            </div>
-            <div 
-              className={`tool-button ${selectedTool === 'point' ? 'active' : ''}`}
-              onClick={() => handleToolChange('point')}
-              title="Point Tool (O)"
-            >
-              <div className="tool-icon"><PointIcon /></div>
-              <div className="tool-name">Point</div>
-              <div className="keyboard-hint">O</div>
-            </div>
-            <div 
-              className={`tool-button ${selectedTool === 'ellipse' ? 'active' : ''}`}
-              onClick={() => setSelectedTool('ellipse')}
-              title="Ellipse Tool (E)"
-            >
-              <div className="tool-icon"><EllipseIcon /></div>
-              <div className="tool-name">Ellipse</div>
-              <div className="keyboard-hint">E</div>
+            <div className="label-preview">
+              <div
+                className="label-color"
+                style={{ backgroundColor: activeLabelColor }}
+              ></div>
+              <span>Current Label: {selectedLabelClass}</span>
             </div>
           </div>
         </div>
 
-        <div className="sidebar-section">
-          <h3><PaletteIcon /> Active Label</h3>
-          <div className="label-selection">
-            <select
-              value={selectedLabelClass}
-              onChange={(e) => setSelectedLabelClass(e.target.value)}
-            >
-              {localLabelClasses.map((lc, i) => (
-                <option key={i} value={lc.name}>
-                  {lc.name}
-                </option>
-              ))}
-            </select>
-            <button onClick={() => setShowAddLabelModal(true)}>
-              <PlusIcon /> Add Label
-            </button>
-          </div>
-          <div className="label-preview">
-            <div 
-              className="label-color" 
-              style={{ backgroundColor: activeLabelColor }}
-            ></div>
-            <span>Current Label: {selectedLabelClass}</span>
-          </div>
+        {/* Canvas */}
+        <div className="canvas-area" ref={canvasAreaRef}>
+          {currentFileUrl ? (
+            <>
+              <DetectionCanvas
+                fileUrl={currentFileUrl}
+                annotations={currentShapes}
+                onAnnotationsChange={handleAnnotationsChange}
+                selectedTool={selectedTool}
+                scale={scale}
+                onWheelZoom={handleWheelZoom}
+                activeLabelColor={activeLabelColor}
+                onFinishShape={handleFinishShape}
+                onDeleteAnnotation={handleDeleteAnnotation}
+                activeLabel={selectedLabelClass}
+                labelClasses={localLabelClasses}
+                pointsLimit={currentPointsLimit}
+                initialPosition={imagePosition}
+                externalSelectedIndex={selectedAnnotationIndex}
+                onSelectAnnotation={setSelectedAnnotationIndex}
+              />
+              {showHelperText && (
+                <div className="canvas-helper visible" ref={canvasHelperRef}>
+                  {helperText}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', margin: 'auto', padding: '40px' }}>
+              No images found
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Canvas */}
-      <div className="canvas-area" ref={canvasAreaRef}>
-        {currentFileUrl ? (
-          <>
-            <DetectionCanvas
-              fileUrl={currentFileUrl}
-              annotations={currentShapes}
-              onAnnotationsChange={handleAnnotationsChange}
-              selectedTool={selectedTool}
-              scale={scale}
-              onWheelZoom={handleWheelZoom}
-              activeLabelColor={activeLabelColor}
-              onFinishShape={handleFinishShape}
-              onDeleteAnnotation={handleDeleteAnnotation}
-              activeLabel={selectedLabelClass}
-              labelClasses={localLabelClasses}
-              pointsLimit={currentPointsLimit}
-              initialPosition={imagePosition}
-            />
-            {showHelperText && (
-              <div className="canvas-helper visible" ref={canvasHelperRef}>
-                {helperText}
-              </div>
-            )}
-          </>
-        ) : (
-          <div style={{ textAlign: 'center', margin: 'auto', padding: '40px' }}>
-            No images found
-          </div>
-        )}
-      </div>
-
-      <AnnotationListSidebar
+        <AnnotationListSidebar
           annotations={currentShapes}
           onDeleteAnnotation={handleDeleteAnnotation}
           onUpdateAnnotation={handleUpdateAnnotation}
           labelClasses={localLabelClasses}
-          onOpenOpacityControl={openOpacityControl}
-          showOpacityControl={showOpacityControl}
           selectedAnnotationIndex={selectedAnnotationIndex}
+          setSelectedAnnotationIndex={setSelectedAnnotationIndex}
           currentShapes={currentShapes}
-          onCloseOpacityControl={closeOpacityControl}
         />
-    </div>
+      </div>
 
-    {/* Add Label Modal */}
-    {showAddLabelModal && (
-      <div className="modal-backdrop">
-        <div className="modal">
-          <h3>Add New Label</h3>
-          <div>
-            <input
-              type="text"
-              placeholder="Label Name"
-              value={newLabelName}
-              onChange={(e) => setNewLabelName(e.target.value)}
-            />
-          </div>
-          <div className="color-palette">
-            {CANDIDATE_COLORS.map((color, idx) => (
-              <div
-                key={idx}
-                className={`color-option ${newLabelColor === color ? 'selected' : ''}`}
-                style={{ backgroundColor: color }}
-                onClick={() => setNewLabelColor(color)}
+      {/* Add Label Modal */}
+      {showAddLabelModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3>Add New Label</h3>
+            <div>
+              <input
+                type="text"
+                placeholder="Label Name"
+                value={newLabelName}
+                onChange={(e) => setNewLabelName(e.target.value)}
               />
-            ))}
-          </div>
-          <div>
-            <input
-              type="color"
-              value={newLabelColor}
-              onChange={(e) => setNewLabelColor(e.target.value)}
-            />
-          </div>
-          <div className="modal-footer">
-            <button onClick={handleAddNewLabel} className="primary">
-              Add
-            </button>
-            <button onClick={() => setShowAddLabelModal(false)} className="secondary">
-              Cancel
-            </button>
+            </div>
+            <div className="color-palette">
+              {CANDIDATE_COLORS.map((color, idx) => (
+                <div
+                  key={idx}
+                  className={`color-option ${newLabelColor === color ? 'selected' : ''}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setNewLabelColor(color)}
+                />
+              ))}
+            </div>
+            <div>
+              <input
+                type="color"
+                value={newLabelColor}
+                onChange={(e) => setNewLabelColor(e.target.value)}
+              />
+            </div>
+            <div className="modal-footer">
+              <button onClick={handleAddNewLabel} className="primary">
+                Add
+              </button>
+              <button onClick={() => setShowAddLabelModal(false)} className="secondary">
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {/* Points Limit Modal */}
-    {showPointsLimitModal && (
-      <div className="modal-backdrop">
-        <div className="modal">
-          <h3>
-            {pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1)} Annotation Points Limit
-          </h3>
-          <div>
-            <input
-              type="number"
-              placeholder="Number of points (0 for unlimited)"
-              value={pointsLimitInput}
-              onChange={(e) => setPointsLimitInput(e.target.value)}
-            />
-          </div>
-          <div className="modal-footer">
-            <button
-              className="primary"
-              onClick={() => {
-                const limit = parseInt(pointsLimitInput);
-                setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
-                setSelectedTool(pendingTool);
-                setShowPointsLimitModal(false);
-                setPointsLimitInput('');
-              }}
-            >
-              Apply
-            </button>
-            <button
-              className="secondary"
-              onClick={() => {
-                setShowPointsLimitModal(false);
-                setPointsLimitInput('');
-              }}
-            >
-              Cancel
-            </button>
+      {/* Points Limit Modal */}
+      {showPointsLimitModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3>
+              {pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1)} Annotation Points Limit
+            </h3>
+            <div>
+              <input
+                type="number"
+                placeholder="Number of points (0 for unlimited)"
+                value={pointsLimitInput}
+                onChange={(e) => setPointsLimitInput(e.target.value)}
+              />
+            </div>
+            <div className="modal-footer">
+              <button
+                className="primary"
+                onClick={() => {
+                  const limit = parseInt(pointsLimitInput);
+                  setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
+                  setSelectedTool(pendingTool);
+                  setShowPointsLimitModal(false);
+                  setPointsLimitInput('');
+                }}
+              >
+                Apply
+              </button>
+              <button
+                className="secondary"
+                onClick={() => {
+                  setShowPointsLimitModal(false);
+                  setPointsLimitInput('');
+                }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
-  </div>
-);
-}
+      )}
+    </div>
+  )
+};

@@ -58,6 +58,8 @@ export default function DetectionCanvas({
   activeLabel,
   pointsLimit, // new prop for point-based tools
   initialPosition, // new prop for initial positioning
+  externalSelectedIndex,  // ← New name
+  onSelectAnnotation,     // ← New name
 }) {
   const stageRef = useRef(null);
   const containerRef = useRef(null);
@@ -96,6 +98,12 @@ export default function DetectionCanvas({
   // For copy/paste
   const [copiedAnnotation, setCopiedAnnotation] = useState(null);
 
+
+  // Synchronize the internal state with the external one
+  useEffect(() => {
+    setSelectedAnnotationIndex(externalSelectedIndex);
+  }, [externalSelectedIndex]);
+
   // ----------- Window / container sizing -----------
   useEffect(() => {
     const handleResize = () => {
@@ -119,15 +127,15 @@ export default function DetectionCanvas({
       setKonvaImg(img);
       setImgDims({ width: img.width, height: img.height });
       setImageLoaded(true);
-      
+
       // Center the image when it loads
       if (containerRef.current) {
         const canvasWidth = containerRef.current.offsetWidth;
         const canvasHeight = containerRef.current.offsetHeight;
-        
+
         const xPos = Math.max(0, (canvasWidth - img.width) / 2);
         const yPos = Math.max(0, (canvasHeight - img.height) / 2);
-        
+
         setImagePos({ x: xPos, y: yPos });
       }
     };
@@ -515,10 +523,10 @@ export default function DetectionCanvas({
 
   // ----------- Creating BBox -----------
   function startBox(pos) {
-    setNewBox({ 
-      x: pos.x, 
-      y: pos.y, 
-      width: 0, 
+    setNewBox({
+      x: pos.x,
+      y: pos.y,
+      width: 0,
       height: 0,
       opacity: 1.0 // Default opacity
     });
@@ -766,6 +774,12 @@ export default function DetectionCanvas({
 
   // ----------- Mouse events for shape creation -----------
   function handleMouseDown(evt) {
+
+    // If click is not on an annotation and not in draw mode, deselect the current annotation
+    if (selectedTool === 'move' && evt.target.name() === 'background-image') {
+      onSelectAnnotation(null);
+    }
+
     if (selectedTool === 'move') {
       return;
     }
@@ -825,7 +839,7 @@ export default function DetectionCanvas({
       finalizePoint();
     }
   }
-  
+
   // ----------- Copy/Paste Keyboard Listener -----------
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -854,7 +868,7 @@ export default function DetectionCanvas({
           onAnnotationsChange([...annotations, newAnn]);
         }
       }
-  
+
       // Remove last "drawing" point if user is in the middle of creating polygon, etc.
       if (e.key === 'Backspace' || e.key === 'Delete') {
         // Polygon
@@ -882,7 +896,7 @@ export default function DetectionCanvas({
         }
       }
     };
-  
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
@@ -898,13 +912,13 @@ export default function DetectionCanvas({
     tempPolyline,
     tempPointPoints,
   ]);
-  
+
   // ----------- Draggable logic for entire shapes -----------
   const handleBBoxDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const updated = [...annotations];
     updated[index] = { ...updated[index], x, y };
-  
+
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -919,12 +933,12 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-  
+
   const handleEllipseDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const updated = [...annotations];
     updated[index] = { ...updated[index], x, y };
-  
+
     if (
       konvaImg &&
       isPartiallyOutside(updated[index], konvaImg.width, konvaImg.height)
@@ -942,12 +956,12 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-  
+
   const handlePointDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const updated = [...annotations];
     updated[index] = { ...updated[index], x, y };
-  
+
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -962,7 +976,7 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-  
+
   const handlePolylineDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const ann = annotations[index];
@@ -973,7 +987,7 @@ export default function DetectionCanvas({
     const updated = [...annotations];
     updated[index] = { ...ann, points: newPoints };
     e.target.position({ x: 0, y: 0 });
-  
+
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -988,7 +1002,7 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-  
+
   const handlePolygonDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const ann = annotations[index];
@@ -999,7 +1013,7 @@ export default function DetectionCanvas({
     const updated = [...annotations];
     updated[index] = { ...ann, points: newPoints };
     e.target.position({ x: 0, y: 0 });
-  
+
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -1014,14 +1028,14 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-  
+
   // ----------- Remove an individual vertex -----------
   function handleRemoveVertex(annIndex, vertexIndex) {
     const updated = [...annotations];
     const ann = { ...updated[annIndex] };
     const shapePoints = [...ann.points];
     shapePoints.splice(vertexIndex, 1);
-  
+
     if (ann.type === 'polygon' && shapePoints.length < 3) {
       updated.splice(annIndex, 1);
     } else if (ann.type === 'polyline' && shapePoints.length < 2) {
@@ -1032,21 +1046,21 @@ export default function DetectionCanvas({
       ann.points = shapePoints;
       updated[annIndex] = ann;
     }
-  
+
     onAnnotationsChange(updated);
   }
-  
+
   // ----------- Insert a new vertex between current vertex and next -----------
   function handleInsertVertex(annIndex, vertexIndex) {
     const updated = [...annotations];
     const ann = { ...updated[annIndex] };
-  
+
     if (ann.type !== 'polygon' && ann.type !== 'polyline') return;
-  
+
     const shapePoints = [...ann.points];
     const length = shapePoints.length;
     if (length < 2) return;
-  
+
     let nextIndex;
     if (ann.type === 'polygon') {
       nextIndex = (vertexIndex + 1) % length;
@@ -1056,20 +1070,20 @@ export default function DetectionCanvas({
       }
       nextIndex = vertexIndex + 1;
     }
-  
+
     const currentPt = shapePoints[vertexIndex];
     const nextPt = shapePoints[nextIndex];
-  
+
     const midX = (currentPt.x + nextPt.x) / 2;
     const midY = (currentPt.y + nextPt.y) / 2;
-  
+
     shapePoints.splice(vertexIndex + 1, 0, { x: midX, y: midY });
-  
+
     ann.points = shapePoints;
     updated[annIndex] = ann;
     onAnnotationsChange(updated);
   }
-  
+
   // ----------- Draggable logic for each vertex -----------
   const handleVertexDragEnd = (annIndex, vertexIndex, e) => {
     e.cancelBubble = true;
@@ -1078,7 +1092,7 @@ export default function DetectionCanvas({
     const shapePoints = [...updated[annIndex].points];
     shapePoints[vertexIndex] = { x, y };
     updated[annIndex] = { ...updated[annIndex], points: shapePoints };
-  
+
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[annIndex],
@@ -1093,12 +1107,12 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-  
+
   // ----------- Transformer logic (for bbox & ellipse) -----------
   useEffect(() => {
     const tr = transformerRef.current;
     if (!tr) return;
-  
+
     if (selectedAnnotationIndex == null) {
       tr.nodes([]);
       return;
@@ -1111,20 +1125,20 @@ export default function DetectionCanvas({
       tr.nodes([]);
     }
   }, [selectedAnnotationIndex, annotations]);
-  
+
   const handleTransformEnd = () => {
     if (selectedAnnotationIndex == null) return;
     const shapeNode = shapeRefs.current[selectedAnnotationIndex];
     if (!shapeNode) return;
-  
+
     const ann = annotations[selectedAnnotationIndex];
     const scaleX = shapeNode.scaleX();
     const scaleY = shapeNode.scaleY();
     const offsetX = shapeNode.x();
     const offsetY = shapeNode.y();
-  
+
     let updatedAnn = { ...ann };
-  
+
     switch (ann.type) {
       case 'bbox': {
         const newWidth = shapeNode.width() * scaleX;
@@ -1147,15 +1161,15 @@ export default function DetectionCanvas({
       default:
         break;
     }
-  
+
     shapeNode.scaleX(1);
     shapeNode.scaleY(1);
     shapeNode.x(0);
     shapeNode.y(0);
-  
+
     const updatedAll = [...annotations];
     updatedAll[selectedAnnotationIndex] = updatedAnn;
-  
+
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updatedAnn,
@@ -1168,10 +1182,10 @@ export default function DetectionCanvas({
         updatedAll[selectedAnnotationIndex] = clipped;
       }
     }
-  
+
     onAnnotationsChange(updatedAll);
   };
-  
+
   return (
     <div className="canvas-container" ref={containerRef}>
       <Stage
@@ -1188,6 +1202,7 @@ export default function DetectionCanvas({
         onDblClick={handleDblClick}
         onContextMenu={handleContextMenu}
       >
+
         <Layer>
           <Group
             id="anno-group"
@@ -1207,13 +1222,13 @@ export default function DetectionCanvas({
                 name="background-image"
               />
             )}
-  
+
             {/* Render existing annotations */}
             {annotations.map((ann, i) => {
               const annColor = ann.color || activeLabelColor || '#ff0000';
               const fillColor = annColor + '55';
               const opacity = ann.opacity !== undefined ? ann.opacity : 1.0;
-  
+
               if (ann.type === 'bbox') {
                 return (
                   <React.Fragment key={i}>
@@ -1236,9 +1251,10 @@ export default function DetectionCanvas({
                         handleBBoxDragEnd(i, e);
                       }}
                       onClick={(e) => {
+
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true;
-                          setSelectedAnnotationIndex(i);
+                          e.cancelBubble = true; //
+                          onSelectAnnotation(i);
                         }
                       }}
                     />
@@ -1274,13 +1290,14 @@ export default function DetectionCanvas({
                       onDragStart={(e) => (e.cancelBubble = true)}
                       onDragMove={(e) => (e.cancelBubble = true)}
                       onDragEnd={(e) => {
-                        e.cancelBubble = true;
+                        e.cancelBubble = true; //
                         handleEllipseDragEnd(i, e);
                       }}
                       onClick={(e) => {
+
                         if (selectedTool === 'move') {
                           e.cancelBubble = true;
-                          setSelectedAnnotationIndex(i);
+                          onSelectAnnotation(i);
                         }
                       }}
                     />
@@ -1313,9 +1330,10 @@ export default function DetectionCanvas({
                         handlePointDragEnd(i, e);
                       }}
                       onClick={(e) => {
+
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true;
-                          setSelectedAnnotationIndex(i);
+                          e.cancelBubble = true; //
+                          onSelectAnnotation(i);
                         }
                       }}
                     />
@@ -1347,9 +1365,10 @@ export default function DetectionCanvas({
                         handlePolylineDragEnd(i, e);
                       }}
                       onClick={(e) => {
+
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true;
-                          setSelectedAnnotationIndex(i);
+                          e.cancelBubble = true; //
+                          onSelectAnnotation(i);
                         }
                       }}
                     >
@@ -1420,9 +1439,10 @@ export default function DetectionCanvas({
                           handlePolygonDragEnd(i, e);
                         }}
                         onClick={(e) => {
+
                           if (selectedTool === 'move') {
-                            e.cancelBubble = true;
-                            setSelectedAnnotationIndex(i);
+                            e.cancelBubble = true; //
+                            onSelectAnnotation(i);
                           }
                         }}
                       >
@@ -1487,9 +1507,10 @@ export default function DetectionCanvas({
                           handlePolygonDragEnd(i, e);
                         }}
                         onClick={(e) => {
+
                           if (selectedTool === 'move') {
-                            e.cancelBubble = true;
-                            setSelectedAnnotationIndex(i);
+                            e.cancelBubble = true; //
+                            onSelectAnnotation(i);
                           }
                         }}
                       >
@@ -1560,9 +1581,10 @@ export default function DetectionCanvas({
                         handlePolylineDragEnd(i, e);
                       }}
                       onClick={(e) => {
+
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true;
-                          setSelectedAnnotationIndex(i);
+                          e.cancelBubble = true; //
+                          onSelectAnnotation(i);
                         }
                       }}
                     >
@@ -1601,7 +1623,7 @@ export default function DetectionCanvas({
               }
               return null;
             })}
-  
+
             {/* In-progress BBox */}
             {newBox && selectedTool === 'bbox' && (
               <Rect
@@ -1614,7 +1636,7 @@ export default function DetectionCanvas({
                 strokeWidth={2 / scale}
               />
             )}
-  
+
             {/* In-progress Polygon */}
             {drawingPolygon && selectedTool === 'polygon' && (
               <>
@@ -1640,7 +1662,7 @@ export default function DetectionCanvas({
                 ))}
               </>
             )}
-  
+
             {/* In-progress Polyline */}
             {drawingPolyline && selectedTool === 'polyline' && (
               <>
@@ -1665,7 +1687,7 @@ export default function DetectionCanvas({
                 ))}
               </>
             )}
-  
+
             {/* In-progress Ellipse */}
             {newEllipse && selectedTool === 'ellipse' && (
               <Ellipse
@@ -1679,7 +1701,7 @@ export default function DetectionCanvas({
                 strokeWidth={2 / scale}
               />
             )}
-  
+
             {/* In-progress Points */}
             {drawingPoint && selectedTool === 'point' && (
               <>
@@ -1697,7 +1719,7 @@ export default function DetectionCanvas({
               </>
             )}
           </Group>
-  
+
           {/* Transformer (only for bbox & ellipse) */}
           <Transformer
             ref={transformerRef}
@@ -1711,8 +1733,8 @@ export default function DetectionCanvas({
       </Stage>
     </div>
   );
-  }
-  
+}
+
 // A small Konva Label to let user delete a selected annotation
 function DeleteLabel({ annotation, scale, shapeBoundingBox, onDelete, color }) {
   const box = shapeBoundingBox(annotation);
