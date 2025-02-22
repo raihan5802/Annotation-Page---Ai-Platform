@@ -38,7 +38,7 @@ function HomeTopBar() {
 
     return (
         <div className="home-topbar">
-            <div className="logo">AI Platform</div>
+            <div className="logo" onClick={() => navigate('/')}>AI Platform</div>
             <div className="menu">
                 <div className="menu-item">
                     <span>Product</span>
@@ -52,10 +52,8 @@ function HomeTopBar() {
                 <div className="menu-item">
                     <span>Company</span>
                 </div>
-            
             </div>
             <div className="user-section">
-                
                 {user ? (
                     <div
                         ref={dropdownRef}

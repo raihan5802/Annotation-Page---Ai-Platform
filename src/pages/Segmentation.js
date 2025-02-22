@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import AnnotationTopBar from '../components/AnnotationTopBar';
@@ -6,16 +6,104 @@ import SegmentationCanvas from '../components/SegmentationCanvas';
 import AnnotationListSidebar from '../components/AnnotationListSidebar';
 import './Segmentation.css';
 
+// SVG Icon Components
+const UndoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 14L4 9l5-5" />
+        <path d="M4 9h10c3 0 7 1 7 6v1" />
+    </svg>
+);
+
+const RedoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 14l5-5-5-5" />
+        <path d="M20 9H10C7 9 3 10 3 15v1" />
+    </svg>
+);
+
+const SaveIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+        <polyline points="17 21 17 13 7 13 7 21" />
+        <polyline points="7 3 7 8 15 8" />
+    </svg>
+);
+
+const BackgroundIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <path d="M12 8v8" />
+        <path d="M8 12h8" />
+    </svg>
+);
+
+const MoveIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="5 9 2 12 5 15" />
+        <polyline points="9 5 12 2 15 5" />
+        <polyline points="15 19 12 22 9 19" />
+        <polyline points="19 9 22 12 19 15" />
+        <line x1="2" y1="12" x2="22" y2="12" />
+        <line x1="12" y1="2" x2="12" y2="22" />
+    </svg>
+);
+
+const PolygonIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3L3 12l4 8h10l4-8z" />
+    </svg>
+);
+
+const SegmentationIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 4H4v7l9 9 7-7-9-9z" />
+        <path d="M20 20L9 9" />
+    </svg>
+);
+
+const PlusIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+);
+
+const PaletteIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="13.5" cy="6.5" r="2.5" />
+        <circle cx="17.5" cy="10.5" r="2.5" />
+        <circle cx="8.5" cy="7.5" r="2.5" />
+        <circle cx="6.5" cy="12.5" r="2.5" />
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.688h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+    </svg>
+);
+
+const ToolsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+);
+
+const CenterIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="16" />
+        <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+);
+
 export default function Segmentation() {
     const navigate = useNavigate();
     const { state } = useLocation();
     const folderInfo = state?.folderInfo;
+    const canvasHelperRef = useRef(null);
+    const canvasAreaRef = useRef(null);
 
     if (!folderInfo) {
         return (
             <div style={{ padding: 20 }}>
                 <h2>No folder info found. Please create a task first.</h2>
-                <button onClick={() => navigate('/')}>Go Home</button>
+                <button onClick={() => navigate('/')} className="primary">Go Home</button>
             </div>
         );
     }
@@ -32,6 +120,13 @@ export default function Segmentation() {
     const [undoStack, setUndoStack] = useState([]);
     const [redoStack, setRedoStack] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [isSaving, setIsSaving] = useState(false);
+    const [showHelperText, setShowHelperText] = useState(false);
+    const [helperText, setHelperText] = useState('');
+
+    // State for image initial positioning
+    const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+    const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
 
     // Tools: move, polygon, segmentation
     const [selectedTool, setSelectedTool] = useState('move');
@@ -40,6 +135,7 @@ export default function Segmentation() {
     const [segmentationType, setSegmentationType] = useState('instance');
     const [panopticOption, setPanopticOption] = useState('instance');
 
+    // Active label state – we now use a local labelClasses list for modification
     const [selectedLabelClass, setSelectedLabelClass] = useState(
         labelClasses[0]?.name || ''
     );
@@ -49,12 +145,16 @@ export default function Segmentation() {
     const currentFileUrl = files[currentIndex]?.url;
     const currentShapes = annotations[currentFileUrl] || [];
 
-    // New states for points‐limit modal (for polygon & segmentation annotations)
+    // New state for points‐limit modal for polygon & segmentation tools
     const [showPointsLimitModal, setShowPointsLimitModal] = useState(false);
     const [pointsLimitInput, setPointsLimitInput] = useState('');
     const [pendingTool, setPendingTool] = useState('');
     const [currentPointsLimit, setCurrentPointsLimit] = useState(0);
 
+    // State for selected annotation for opacity control
+    const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
+
+    // Whenever shapes change, store old state in undoStack
     const handleAnnotationsChange = (newShapes) => {
         const updated = {
             ...annotations,
@@ -65,6 +165,91 @@ export default function Segmentation() {
         setAnnotations(updated);
     };
 
+    // Display helper text when tool is changed
+    useEffect(() => {
+        if (selectedTool === 'move') {
+            showHelper('Move and select objects (M)');
+        } else if (selectedTool === 'polygon') {
+            showHelper('Click to add points. Double-click to complete polygon (P)');
+        } else if (selectedTool === 'segmentation') {
+            if (segmentationType === 'instance') {
+                showHelper('Draw instance segmentation polygon (S)');
+            } else if (segmentationType === 'semantic') {
+                showHelper('Draw semantic segmentation polygon (S)');
+            } else if (segmentationType === 'panoptic') {
+                showHelper(`Draw ${panopticOption} segmentation polygon (S)`);
+            }
+        }
+    }, [selectedTool, segmentationType, panopticOption]);
+
+    // Calculate canvas dimensions
+    useEffect(() => {
+        if (canvasAreaRef.current) {
+            setCanvasDimensions({
+                width: canvasAreaRef.current.offsetWidth,
+                height: canvasAreaRef.current.offsetHeight
+            });
+        }
+    }, []);
+
+    // Handle clicking outside to deselect annotations
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (selectedAnnotationIndex !== null &&
+                !event.target.closest('.anno-item') &&
+                !event.target.closest('.appearance-section')) {
+                setSelectedAnnotationIndex(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [selectedAnnotationIndex]);
+
+    const showHelper = (text) => {
+        setHelperText(text);
+        setShowHelperText(true);
+        if (canvasHelperRef.current) {
+            canvasHelperRef.current.classList.add('visible');
+        }
+
+        // Hide helper text after 3 seconds
+        setTimeout(() => {
+            if (canvasHelperRef.current) {
+                canvasHelperRef.current.classList.remove('visible');
+            }
+            setTimeout(() => setShowHelperText(false), 300);
+        }, 3000);
+    };
+
+    // Center the image manually
+    const handleCenterImage = () => {
+        if (currentFileUrl) {
+            const img = new Image();
+            img.src = currentFileUrl;
+            img.onload = () => {
+                if (canvasAreaRef.current) {
+                    const canvasWidth = canvasAreaRef.current.offsetWidth;
+                    const canvasHeight = canvasAreaRef.current.offsetHeight;
+
+                    // Calculate position to center the image
+                    const xPos = Math.max(0, (canvasWidth - img.width) / 2);
+                    const yPos = Math.max(0, (canvasHeight - img.height) / 2);
+
+                    // Set the position (with a minimum of 0 to avoid negative positioning)
+                    setImagePosition({
+                        x: Math.max(0, xPos),
+                        y: Math.max(0, yPos)
+                    });
+
+                    showHelper('Image centered');
+                }
+            };
+        }
+    };
+
     // -------------- Undo / Redo --------------
     const undo = () => {
         if (undoStack.length === 0) return;
@@ -72,6 +257,7 @@ export default function Segmentation() {
         setRedoStack([...redoStack, annotations]);
         setUndoStack(undoStack.slice(0, -1));
         setAnnotations(prev);
+        showHelper('Undo successful');
     };
 
     const redo = () => {
@@ -80,6 +266,7 @@ export default function Segmentation() {
         setUndoStack([...undoStack, annotations]);
         setRedoStack(redoStack.slice(0, -1));
         setAnnotations(next);
+        showHelper('Redo successful');
     };
 
     // -------------- Deletion & Update --------------
@@ -87,6 +274,15 @@ export default function Segmentation() {
         const arr = [...currentShapes];
         arr.splice(index, 1);
         handleAnnotationsChange(arr);
+        showHelper('Annotation deleted');
+
+        // Reset selected annotation if the deleted one was selected
+        if (selectedAnnotationIndex === index) {
+            setSelectedAnnotationIndex(null);
+        } else if (selectedAnnotationIndex > index) {
+            // Adjust selected index if it was after the deleted one
+            setSelectedAnnotationIndex(selectedAnnotationIndex - 1);
+        }
     };
 
     const handleUpdateAnnotation = (index, changes) => {
@@ -113,6 +309,7 @@ export default function Segmentation() {
 
     // -------------- Save --------------
     const handleSave = async () => {
+        setIsSaving(true);
         const bodyData = {
             folderId,
             taskName,
@@ -126,10 +323,12 @@ export default function Segmentation() {
                 body: JSON.stringify(bodyData),
             });
             const data = await res.json();
-            alert('Saved: ' + data.message);
+            showHelper('Annotations saved successfully');
         } catch (err) {
             console.error(err);
-            alert('Error saving');
+            showHelper('Error saving annotations');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -148,6 +347,7 @@ export default function Segmentation() {
             );
             newShapes.push(bgAnn);
             handleAnnotationsChange(newShapes);
+            showHelper('Background filled');
         };
     };
 
@@ -183,6 +383,7 @@ export default function Segmentation() {
             holes: holes,
             label: 'background',
             color: bgColor,
+            opacity: 0.5, // Default opacity for background
         };
     }
 
@@ -190,23 +391,33 @@ export default function Segmentation() {
     useEffect(() => {
         const handleKey = (e) => {
             const key = e.key;
+
             if (key === 'm' || key === 'M') {
                 setSelectedTool('move');
             } else if (key === 'p' || key === 'P') {
                 handleToolChange('polygon');
+            } else if (key === 's' || key === 'S') {
+                handleToolChange('segmentation');
             } else if ((key === 's' || key === 'S') && e.ctrlKey) {
                 e.preventDefault();
                 handleSave();
-            } else if (key === 's' || key === 'S') {
-                handleToolChange('segmentation');
+            } else if (key === 'c' || key === 'C') {
+                handleCenterImage();
             }
+
             if (key === 'Escape') {
-                const event = new CustomEvent('cancel-annotation');
-                window.dispatchEvent(event);
+                // Close open controls on Escape
+                if (selectedAnnotationIndex !== null) {
+                    setSelectedAnnotationIndex(null);
+                } else {
+                    const event = new CustomEvent('cancel-annotation');
+                    window.dispatchEvent(event);
+                }
             }
             if (key === 'ArrowRight') {
                 handleNext();
-            } else if (key === 'ArrowLeft') {
+            }
+            if (key === 'ArrowLeft') {
                 handlePrev();
             }
             if (e.ctrlKey && (key === 'z' || key === 'Z')) {
@@ -219,7 +430,7 @@ export default function Segmentation() {
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [annotations, undoStack, redoStack]);
+    }, [annotations, undoStack, redoStack, selectedAnnotationIndex]);
 
     // -------------- Add Label Modal --------------
     const [showAddLabelModal, setShowAddLabelModal] = useState(false);
@@ -234,6 +445,7 @@ export default function Segmentation() {
         '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
     ];
 
+    // Helper: shadeColor (same as used elsewhere)
     function shadeColor(col, amt) {
         let usePound = false;
         let color = col;
@@ -256,6 +468,7 @@ export default function Segmentation() {
         return (usePound ? '#' : '') + RR + GG + BB;
     }
 
+    // Compute the next available color (checking both label colors and their instance variations)
     function getNextAvailableColor() {
         const usedColors = new Set();
         const offsets = [0, -50, -100, -150, -200];
@@ -273,6 +486,7 @@ export default function Segmentation() {
         return CANDIDATE_COLORS[0];
     }
 
+    // When the add-label modal is opened, automatically select a new color
     useEffect(() => {
         if (showAddLabelModal) {
             setNewLabelColor(getNextAvailableColor());
@@ -281,21 +495,21 @@ export default function Segmentation() {
 
     const handleAddNewLabel = () => {
         if (!newLabelName.trim()) {
-            alert('Label name cannot be empty');
+            showHelper('Label name cannot be empty');
             return;
         }
         const nameExists = localLabelClasses.some(
             (lc) => lc.name.toLowerCase() === newLabelName.trim().toLowerCase()
         );
         if (nameExists) {
-            alert('Label already exists');
+            showHelper('Label already exists');
             return;
         }
         const colorExists = localLabelClasses.some(
             (lc) => lc.color.toLowerCase() === newLabelColor.trim().toLowerCase()
         );
         if (colorExists) {
-            alert('Label color already used. Please choose a different color.');
+            showHelper('Label color already used. Please choose a different color.');
             return;
         }
         const newLabel = { name: newLabelName.trim(), color: newLabelColor };
@@ -304,14 +518,16 @@ export default function Segmentation() {
         setNewLabelName('');
         setNewLabelColor('#ff0000');
         setShowAddLabelModal(false);
+        showHelper(`Added new label: ${newLabel.name}`);
     };
 
     // -------------- When annotation finishes => switch to move --------------
     const handleFinishShape = () => {
         setSelectedTool('move');
+        showHelper('Annotation completed');
     };
 
-    // Function to handle tool changes for polygon and segmentation so that a modal is shown
+    // Function to handle tool changes for polygon and segmentation
     const handleToolChange = (tool) => {
         if (tool === 'polygon' || tool === 'segmentation') {
             setPendingTool(tool);
@@ -320,6 +536,11 @@ export default function Segmentation() {
             setSelectedTool(tool);
         }
     };
+
+    // Get the current label color
+    const activeLabelColor = localLabelClasses.find(
+        (l) => l.name === selectedLabelClass
+    )?.color || '#ff0000';
 
     return (
         <div className="annotate-container">
@@ -336,134 +557,187 @@ export default function Segmentation() {
                 taskName={taskName}
             />
 
-            <div style={{ padding: '8px', background: '#eee' }}>
-                <button onClick={undo} style={{ marginRight: '8px' }}>
-                    Undo (Ctrl+Z)
+            <div className="annotate-actions">
+                <button onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)">
+                    <UndoIcon /> Undo
                 </button>
-                <button onClick={redo} style={{ marginRight: '8px' }}>
-                    Redo (Ctrl+Y)
+                <button onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)">
+                    <RedoIcon /> Redo
                 </button>
-                <button onClick={handleFillBackground} style={{ marginRight: '8px' }}>
-                    Fill Background
+                <div className="divider"></div>
+                <button onClick={handleSave} className="primary" disabled={isSaving} title="Save (Ctrl+S)">
+                    <SaveIcon /> {isSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={handleFillBackground} title="Fill Background">
+                    <BackgroundIcon /> Background
+                </button>
+                <button onClick={handleCenterImage} title="Center Image (C)">
+                    <CenterIcon /> Center
                 </button>
             </div>
 
             <div className="annotate-main">
                 {/* Tools Sidebar */}
                 <div className="tools-sidebar">
-                    <h3>Tools</h3>
-                    <label>
-                        <input
-                            type="radio"
-                            name="tool"
-                            value="move"
-                            checked={selectedTool === 'move'}
-                            onChange={() => setSelectedTool('move')}
-                        />
-                        <span className="tool-icon">👆</span> Move (M)
-                    </label>
-                    <label>
-                        <input
-                            type="radio"
-                            name="tool"
-                            value="polygon"
-                            checked={selectedTool === 'polygon'}
-                            onChange={() => handleToolChange('polygon')}
-                        />
-                        <span className="tool-icon">🔺</span> Polygon (P)
-                    </label>
-                    <label>
-                        <input
-                            type="radio"
-                            name="tool"
-                            value="segmentation"
-                            checked={selectedTool === 'segmentation'}
-                            onChange={() => handleToolChange('segmentation')}
-                        />
-                        <span className="tool-icon">🎨</span> Segmentation (S)
-                    </label>
-                    {selectedTool === 'segmentation' && (
-                        <div style={{ marginLeft: '20px', marginBottom: '8px' }}>
-                            <label style={{ display: 'block', marginBottom: '4px' }}>
-                                Type:
-                            </label>
-                            <select
-                                value={segmentationType}
-                                onChange={(e) => setSegmentationType(e.target.value)}
+                    <div className="sidebar-section">
+                        <h3><ToolsIcon /> Tools</h3>
+                        <div className="tool-grid">
+                            <div
+                                className={`tool-button ${selectedTool === 'move' ? 'active' : ''}`}
+                                onClick={() => setSelectedTool('move')}
+                                title="Move Tool (M)"
                             >
-                                <option value="instance">Instance</option>
-                                <option value="semantic">Semantic</option>
-                                <option value="panoptic">Panoptic</option>
-                            </select>
+                                <div className="tool-icon"><MoveIcon /></div>
+                                <div className="tool-name">Move</div>
+                                <div className="keyboard-hint">M</div>
+                            </div>
+                            <div
+                                className={`tool-button ${selectedTool === 'polygon' ? 'active' : ''}`}
+                                onClick={() => handleToolChange('polygon')}
+                                title="Polygon Tool (P)"
+                            >
+                                <div className="tool-icon"><PolygonIcon /></div>
+                                <div className="tool-name">Polygon</div>
+                                <div className="keyboard-hint">P</div>
+                            </div>
+                            <div
+                                className={`tool-button ${selectedTool === 'segmentation' ? 'active' : ''}`}
+                                onClick={() => handleToolChange('segmentation')}
+                                title="Segmentation Tool (S)"
+                            >
+                                <div className="tool-icon"><SegmentationIcon /></div>
+                                <div className="tool-name">Segment</div>
+                                <div className="keyboard-hint">S</div>
+                            </div>
                         </div>
-                    )}
-                    {selectedTool === 'segmentation' && segmentationType === 'panoptic' && (
-                        <div style={{ marginLeft: '20px', marginBottom: '8px' }}>
-                            <label>
-                                <input
-                                    type="radio"
-                                    name="panopticOption"
-                                    value="instance"
-                                    checked={panopticOption === 'instance'}
-                                    onChange={() => setPanopticOption('instance')}
-                                />
-                                Instance
-                            </label>
-                            <label style={{ marginLeft: '8px' }}>
-                                <input
-                                    type="radio"
-                                    name="panopticOption"
-                                    value="semantic"
-                                    checked={panopticOption === 'semantic'}
-                                    onChange={() => setPanopticOption('semantic')}
-                                />
-                                Semantic
-                            </label>
-                        </div>
-                    )}
 
-                    <h3 style={{ marginTop: 16 }}>Active Label</h3>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <select
-                            value={selectedLabelClass}
-                            onChange={(e) => setSelectedLabelClass(e.target.value)}
-                        >
-                            {localLabelClasses.map((lc, i) => (
-                                <option key={i} value={lc.name}>
-                                    {lc.name}
-                                </option>
-                            ))}
-                        </select>
-                        <button onClick={() => setShowAddLabelModal(true)} style={{ marginLeft: '8px' }}>
-                            Add Label
-                        </button>
+                        {selectedTool === 'segmentation' && (
+                            <div className="segmentation-options">
+                                <div className="option-section">
+                                    <h4>Segmentation Type</h4>
+                                    <div className="radio-group">
+                                        <label className="radio-button">
+                                            <input
+                                                type="radio"
+                                                name="segmentationType"
+                                                value="instance"
+                                                checked={segmentationType === 'instance'}
+                                                onChange={() => setSegmentationType('instance')}
+                                            />
+                                            <span className="radio-label">Instance</span>
+                                        </label>
+                                        <label className="radio-button">
+                                            <input
+                                                type="radio"
+                                                name="segmentationType"
+                                                value="semantic"
+                                                checked={segmentationType === 'semantic'}
+                                                onChange={() => setSegmentationType('semantic')}
+                                            />
+                                            <span className="radio-label">Semantic</span>
+                                        </label>
+                                        <label className="radio-button">
+                                            <input
+                                                type="radio"
+                                                name="segmentationType"
+                                                value="panoptic"
+                                                checked={segmentationType === 'panoptic'}
+                                                onChange={() => setSegmentationType('panoptic')}
+                                            />
+                                            <span className="radio-label">Panoptic</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {segmentationType === 'panoptic' && (
+                                    <div className="option-section">
+                                        <h4>Panoptic Option</h4>
+                                        <div className="radio-group">
+                                            <label className="radio-button">
+                                                <input
+                                                    type="radio"
+                                                    name="panopticOption"
+                                                    value="instance"
+                                                    checked={panopticOption === 'instance'}
+                                                    onChange={() => setPanopticOption('instance')}
+                                                />
+                                                <span className="radio-label">Instance</span>
+                                            </label>
+                                            <label className="radio-button">
+                                                <input
+                                                    type="radio"
+                                                    name="panopticOption"
+                                                    value="semantic"
+                                                    checked={panopticOption === 'semantic'}
+                                                    onChange={() => setPanopticOption('semantic')}
+                                                />
+                                                <span className="radio-label">Semantic</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="sidebar-section">
+                        <h3><PaletteIcon /> Active Label</h3>
+                        <div className="label-selection">
+                            <select
+                                value={selectedLabelClass}
+                                onChange={(e) => setSelectedLabelClass(e.target.value)}
+                            >
+                                {localLabelClasses.map((lc, i) => (
+                                    <option key={i} value={lc.name}>
+                                        {lc.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <button onClick={() => setShowAddLabelModal(true)}>
+                                <PlusIcon /> Add Label
+                            </button>
+                        </div>
+                        <div className="label-preview">
+                            <div
+                                className="label-color"
+                                style={{ backgroundColor: activeLabelColor }}
+                            ></div>
+                            <span>Current Label: {selectedLabelClass}</span>
+                        </div>
                     </div>
                 </div>
 
                 {/* Canvas */}
-                <div className="canvas-area">
+                <div className="canvas-area" ref={canvasAreaRef}>
                     {currentFileUrl ? (
-                        <SegmentationCanvas
-                            fileUrl={currentFileUrl}
-                            annotations={currentShapes}
-                            onAnnotationsChange={handleAnnotationsChange}
-                            selectedTool={selectedTool}
-                            scale={scale}
-                            onWheelZoom={handleWheelZoom}
-                            activeLabelColor={
-                                localLabelClasses.find((l) => l.name === selectedLabelClass)?.color ||
-                                '#ff0000'
-                            }
-                            onFinishShape={handleFinishShape}
-                            onDeleteAnnotation={handleDeleteAnnotation}
-                            activeLabel={selectedLabelClass}
-                            labelClasses={localLabelClasses}
-                            segmentationType={segmentationType}
-                            panopticOption={panopticOption}
-                            pointsLimit={currentPointsLimit}
-                        />
+                        <>
+                            <SegmentationCanvas
+                                fileUrl={currentFileUrl}
+                                annotations={currentShapes}
+                                onAnnotationsChange={handleAnnotationsChange}
+                                selectedTool={selectedTool}
+                                scale={scale}
+                                onWheelZoom={handleWheelZoom}
+                                activeLabelColor={activeLabelColor}
+                                onFinishShape={handleFinishShape}
+                                onDeleteAnnotation={handleDeleteAnnotation}
+                                activeLabel={selectedLabelClass}
+                                labelClasses={localLabelClasses}
+                                segmentationType={segmentationType}
+                                panopticOption={panopticOption}
+                                pointsLimit={currentPointsLimit}
+                                initialPosition={imagePosition}
+                                externalSelectedIndex={selectedAnnotationIndex}
+                                onSelectAnnotation={setSelectedAnnotationIndex}
+                            />
+                            {showHelperText && (
+                                <div className="canvas-helper visible" ref={canvasHelperRef}>
+                                    {helperText}
+                                </div>
+                            )}
+                        </>
                     ) : (
-                        <div style={{ textAlign: 'center', margin: 'auto' }}>
+                        <div style={{ textAlign: 'center', margin: 'auto', padding: '40px' }}>
                             No images found
                         </div>
                     )}
@@ -474,33 +748,16 @@ export default function Segmentation() {
                     onDeleteAnnotation={handleDeleteAnnotation}
                     onUpdateAnnotation={handleUpdateAnnotation}
                     labelClasses={localLabelClasses}
+                    selectedAnnotationIndex={selectedAnnotationIndex}
+                    setSelectedAnnotationIndex={setSelectedAnnotationIndex}
+                    currentShapes={currentShapes}
                 />
             </div>
 
+            {/* Add Label Modal */}
             {showAddLabelModal && (
-                <div
-                    className="modal-backdrop"
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        background: 'rgba(0,0,0,0.3)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
-                >
-                    <div
-                        className="modal"
-                        style={{
-                            background: '#fff',
-                            padding: '20px',
-                            borderRadius: '8px',
-                            minWidth: '300px'
-                        }}
-                    >
+                <div className="modal-backdrop">
+                    <div className="modal">
                         <h3>Add New Label</h3>
                         <div>
                             <input
@@ -508,22 +765,30 @@ export default function Segmentation() {
                                 placeholder="Label Name"
                                 value={newLabelName}
                                 onChange={(e) => setNewLabelName(e.target.value)}
-                                style={{ width: '100%', marginBottom: '10px' }}
                             />
+                        </div>
+                        <div className="color-palette">
+                            {CANDIDATE_COLORS.map((color, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`color-option ${newLabelColor === color ? 'selected' : ''}`}
+                                    style={{ backgroundColor: color }}
+                                    onClick={() => setNewLabelColor(color)}
+                                />
+                            ))}
                         </div>
                         <div>
                             <input
                                 type="color"
                                 value={newLabelColor}
                                 onChange={(e) => setNewLabelColor(e.target.value)}
-                                style={{ marginBottom: '10px' }}
                             />
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <button onClick={handleAddNewLabel} style={{ marginRight: '8px' }}>
+                        <div className="modal-footer">
+                            <button onClick={handleAddNewLabel} className="primary">
                                 Add
                             </button>
-                            <button onClick={() => setShowAddLabelModal(false)}>
+                            <button onClick={() => setShowAddLabelModal(false)} className="secondary">
                                 Cancel
                             </button>
                         </div>
@@ -531,30 +796,10 @@ export default function Segmentation() {
                 </div>
             )}
 
+            {/* Points Limit Modal */}
             {showPointsLimitModal && (
-                <div
-                    className="modal-backdrop"
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        background: 'rgba(0,0,0,0.3)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
-                >
-                    <div
-                        className="modal"
-                        style={{
-                            background: '#fff',
-                            padding: '20px',
-                            borderRadius: '8px',
-                            minWidth: '300px'
-                        }}
-                    >
+                <div className="modal-backdrop">
+                    <div className="modal">
                         <h3>
                             {pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1)} Annotation Points Limit
                         </h3>
@@ -564,11 +809,11 @@ export default function Segmentation() {
                                 placeholder="Number of points (0 for unlimited)"
                                 value={pointsLimitInput}
                                 onChange={(e) => setPointsLimitInput(e.target.value)}
-                                style={{ width: '100%', marginBottom: '10px' }}
                             />
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <div className="modal-footer">
                             <button
+                                className="primary"
                                 onClick={() => {
                                     const limit = parseInt(pointsLimitInput);
                                     setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
@@ -576,11 +821,11 @@ export default function Segmentation() {
                                     setShowPointsLimitModal(false);
                                     setPointsLimitInput('');
                                 }}
-                                style={{ marginRight: '8px' }}
                             >
-                                Shape
+                                Apply
                             </button>
                             <button
+                                className="secondary"
                                 onClick={() => {
                                     setShowPointsLimitModal(false);
                                     setPointsLimitInput('');

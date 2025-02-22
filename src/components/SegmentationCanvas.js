@@ -56,6 +56,9 @@ export default function SegmentationCanvas({
     segmentationType,
     panopticOption,
     pointsLimit, // new prop for point-based tools
+    initialPosition = { x: 0, y: 0 }, // Position for image centering
+    externalSelectedIndex, // For syncing selection with sidebar
+    onSelectAnnotation, // Callback to notify parent of selection change
 }) {
     const stageRef = useRef(null);
     const containerRef = useRef(null);
@@ -64,7 +67,7 @@ export default function SegmentationCanvas({
     const [konvaImg, setKonvaImg] = useState(null);
 
     // Master group offset (image panning)
-    const [imagePos, setImagePos] = useState({ x: 0, y: 0 });
+    const [imagePos, setImagePos] = useState(initialPosition);
 
     // In-progress shape states (only for polygon-based tools)
     const [tempPoints, setTempPoints] = useState([]);
@@ -81,6 +84,11 @@ export default function SegmentationCanvas({
     // For copy/paste and selection (for polygons)
     const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
     const [copiedAnnotation, setCopiedAnnotation] = useState(null);
+
+    // Synchronize the internal state with the external one
+    useEffect(() => {
+        setSelectedAnnotationIndex(externalSelectedIndex);
+    }, [externalSelectedIndex]);
 
     // ----------- Window / container sizing -----------
     useEffect(() => {
@@ -103,10 +111,17 @@ export default function SegmentationCanvas({
         img.src = fileUrl;
         img.onload = () => {
             setKonvaImg(img);
-            setImagePos({ x: 0, y: 0 });
+            setImagePos(initialPosition);
         };
         img.onerror = () => console.error('Could not load image:', fileUrl);
-    }, [fileUrl]);
+    }, [fileUrl, initialPosition]);
+
+    // Apply custom initial position when provided
+    useEffect(() => {
+        if (initialPosition && (initialPosition.x !== 0 || initialPosition.y !== 0)) {
+            setImagePos(initialPosition);
+        }
+    }, [initialPosition]);
 
     // ----------- Relative pointer position -----------
     function getGroupPos(evt) {
@@ -240,6 +255,7 @@ export default function SegmentationCanvas({
                 points: pointsToUse,
                 label: activeLabel,
                 color: activeLabelColor,
+                opacity: 1.0, // Default opacity
             };
             if (konvaImg) {
                 const clipped = clipAnnotationToBoundary(
@@ -277,6 +293,7 @@ export default function SegmentationCanvas({
                 type: 'polygon',
                 points: pointsToUse,
                 label: activeLabel,
+                opacity: 1.0, // Default opacity
             };
 
             // Compute new instance ID based on current annotations of this label.
@@ -318,13 +335,14 @@ export default function SegmentationCanvas({
         setDrawingSemanticPolygon(true);
     }
     function finalizeSemanticPolygon(pointsParam) {
-        const pointsToUse = pointsParam || tempInstancePoints;
+        const pointsToUse = pointsParam || tempSemanticPoints;
         if (pointsToUse.length >= 3) {
             const newAnn = {
                 type: 'polygon',
                 points: pointsToUse,
                 label: activeLabel,
                 color: activeLabelColor,
+                opacity: 1.0, // Default opacity
             };
             if (konvaImg) {
                 const clipped = clipAnnotationToBoundary(newAnn, konvaImg.width, konvaImg.height);
@@ -413,6 +431,11 @@ export default function SegmentationCanvas({
     const doubleClickThreshold = 250; // ms
 
     function handleMouseDown(evt) {
+        // If click is not on an annotation and not in draw mode, deselect the current annotation
+        if (selectedTool === 'move' && evt.target.name() === 'background-image') {
+            onSelectAnnotation(null);
+        }
+
         if (selectedTool === 'move') {
             return;
         }
@@ -691,6 +714,7 @@ export default function SegmentationCanvas({
                                 image={konvaImg}
                                 width={konvaImg.width}
                                 height={konvaImg.height}
+                                name="background-image"
                             />
                         )}
 
@@ -699,6 +723,7 @@ export default function SegmentationCanvas({
                             if (ann.type === 'polygon') {
                                 const annColor = ann.color || activeLabelColor || '#ff0000';
                                 const fillColor = annColor + '55';
+                                const opacity = ann.opacity !== undefined ? ann.opacity : 1.0; // Support opacity
 
                                 if (ann.holes && ann.holes.length > 0) {
                                     const pathData = polygonToPath(ann.points, ann.holes);
@@ -714,7 +739,7 @@ export default function SegmentationCanvas({
                                                 onClick={(e) => {
                                                     if (selectedTool === 'move') {
                                                         e.cancelBubble = true;
-                                                        setSelectedAnnotationIndex(i);
+                                                        onSelectAnnotation(i);
                                                     }
                                                 }}
                                             >
@@ -724,6 +749,7 @@ export default function SegmentationCanvas({
                                                     stroke={annColor}
                                                     strokeWidth={2 / scale}
                                                     fillRule="evenodd"
+                                                    opacity={opacity}
                                                 />
                                                 {ann.points.map((pt, idx) => (
                                                     <Circle
@@ -734,6 +760,7 @@ export default function SegmentationCanvas({
                                                         fill="#fff"
                                                         stroke={annColor}
                                                         strokeWidth={1 / scale}
+                                                        opacity={opacity}
                                                         draggable
                                                         onMouseDown={(ev) => (ev.cancelBubble = true)}
                                                         onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
@@ -801,7 +828,7 @@ export default function SegmentationCanvas({
                                                 onClick={(e) => {
                                                     if (selectedTool === 'move') {
                                                         e.cancelBubble = true;
-                                                        setSelectedAnnotationIndex(i);
+                                                        onSelectAnnotation(i);
                                                     }
                                                 }}
                                             >
@@ -810,6 +837,7 @@ export default function SegmentationCanvas({
                                                     fill={fillColor}
                                                     stroke={annColor}
                                                     strokeWidth={2 / scale}
+                                                    opacity={opacity}
                                                     closed
                                                 />
                                                 {ann.points.map((pt, idx) => (
@@ -821,6 +849,7 @@ export default function SegmentationCanvas({
                                                         fill="#fff"
                                                         stroke={annColor}
                                                         strokeWidth={1 / scale}
+                                                        opacity={opacity}
                                                         draggable
                                                         onMouseDown={(ev) => (ev.cancelBubble = true)}
                                                         onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
@@ -858,6 +887,7 @@ export default function SegmentationCanvas({
                                                     fill={annColor}
                                                     stroke={annColor}
                                                     strokeWidth={2 / scale}
+                                                    opacity={opacity}
                                                     pointerLength={10 / scale}
                                                     pointerWidth={8 / scale}
                                                 />
