@@ -52,8 +52,10 @@ function HomeTopBar() {
                 <div className="menu-item">
                     <span>Company</span>
                 </div>
+            
             </div>
             <div className="user-section">
+                
                 {user ? (
                     <div
                         ref={dropdownRef}

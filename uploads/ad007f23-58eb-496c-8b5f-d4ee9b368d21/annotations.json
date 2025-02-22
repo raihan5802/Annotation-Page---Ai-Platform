@@ -1,0 +1,24 @@
+{
+  "taskName": "updated test",
+  "labelClasses": [
+    {
+      "name": "t",
+      "color": "#e6194B"
+    }
+  ],
+  "annotations": {
+    "http://localhost:4000/uploads/ad007f23-58eb-496c-8b5f-d4ee9b368d21/Screenshot_2024-12-14-02-59-05-68_f73b71075b1de7323614b647fe394240.jpg": [
+      {
+        "type": "bbox",
+        "x": 236,
+        "y": 537.4000015258787,
+        "width": 215,
+        "height": 168,
+        "opacity": 1,
+        "label": "t",
+        "color": "#e6194B"
+      }
+    ]
+  },
+  "lastUpdated": "2025-02-21T17:18:02.728Z"
+}

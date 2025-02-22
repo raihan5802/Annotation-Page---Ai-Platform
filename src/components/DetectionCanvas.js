@@ -57,15 +57,18 @@ export default function DetectionCanvas({
   onDeleteAnnotation,
   activeLabel,
   pointsLimit, // new prop for point-based tools
+  initialPosition, // new prop for initial positioning
 }) {
   const stageRef = useRef(null);
   const containerRef = useRef(null);
 
   const [dims, setDims] = useState({ width: 0, height: 0 });
   const [konvaImg, setKonvaImg] = useState(null);
+  const [imgDims, setImgDims] = useState({ width: 0, height: 0 });
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Master group offset (image panning)
-  const [imagePos, setImagePos] = useState({ x: 0, y: 0 });
+  const [imagePos, setImagePos] = useState(initialPosition || { x: 0, y: 0 });
 
   // In-progress shapes (while drawing)
   const [newBox, setNewBox] = useState(null);
@@ -114,10 +117,34 @@ export default function DetectionCanvas({
     img.src = fileUrl;
     img.onload = () => {
       setKonvaImg(img);
-      setImagePos({ x: 0, y: 0 });
+      setImgDims({ width: img.width, height: img.height });
+      setImageLoaded(true);
+      
+      // Center the image when it loads
+      if (containerRef.current) {
+        const canvasWidth = containerRef.current.offsetWidth;
+        const canvasHeight = containerRef.current.offsetHeight;
+        
+        const xPos = Math.max(0, (canvasWidth - img.width) / 2);
+        const yPos = Math.max(0, (canvasHeight - img.height) / 2);
+        
+        setImagePos({ x: xPos, y: yPos });
+      }
     };
     img.onerror = () => console.error('Could not load image:', fileUrl);
   }, [fileUrl]);
+
+  // Apply custom initial position when provided or center on resize
+  useEffect(() => {
+    if (initialPosition && (initialPosition.x !== 0 || initialPosition.y !== 0)) {
+      setImagePos(initialPosition);
+    } else if (imageLoaded && konvaImg && dims.width && dims.height) {
+      // Center image
+      const xPos = Math.max(0, (dims.width - imgDims.width) / 2);
+      const yPos = Math.max(0, (dims.height - imgDims.height) / 2);
+      setImagePos({ x: xPos, y: yPos });
+    }
+  }, [initialPosition, imageLoaded, konvaImg, dims, imgDims]);
 
   // ----------- Color shading for instance polygons -----------
   function shadeColor(col, amt) {
@@ -488,7 +515,13 @@ export default function DetectionCanvas({
 
   // ----------- Creating BBox -----------
   function startBox(pos) {
-    setNewBox({ x: pos.x, y: pos.y, width: 0, height: 0 });
+    setNewBox({ 
+      x: pos.x, 
+      y: pos.y, 
+      width: 0, 
+      height: 0,
+      opacity: 1.0 // Default opacity
+    });
   }
   function updateBox(pos) {
     if (!newBox) return;
@@ -505,6 +538,7 @@ export default function DetectionCanvas({
       ...newBox,
       label: activeLabel,
       color: activeLabelColor,
+      opacity: 1.0, // Default opacity
     };
 
     if (konvaImg) {
@@ -542,6 +576,7 @@ export default function DetectionCanvas({
         points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
+        opacity: 1.0, // Default opacity
       };
       if (konvaImg) {
         const clipped = clipAnnotationToBoundary(
@@ -573,13 +608,14 @@ export default function DetectionCanvas({
     setDrawingPolyline(true);
   }
   function finalizePolyline(pointsParam) {
-    const pointsToUse = pointsParam || tempInstancePoints;
+    const pointsToUse = pointsParam || tempPolyline;
     if (pointsToUse.length >= 2) {
       const newAnn = {
         type: 'polyline',
         points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
+        opacity: 1.0, // Default opacity
       };
       if (konvaImg) {
         const clipped = clipAnnotationToBoundary(
@@ -611,13 +647,14 @@ export default function DetectionCanvas({
     setDrawingPoint(true);
   }
   function finalizePoint(pointsParam) {
-    const pointsToUse = pointsParam || tempInstancePoints;
+    const pointsToUse = pointsParam || tempPointPoints;
     if (pointsToUse.length > 0) {
       const newAnn = {
         type: 'points',
         points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
+        opacity: 1.0, // Default opacity
       };
       if (konvaImg) {
         const clipped = clipAnnotationToBoundary(
@@ -648,6 +685,7 @@ export default function DetectionCanvas({
       rotation: 0,
       label: activeLabel,
       color: activeLabelColor,
+      opacity: 1.0, // Default opacity
     });
   }
   function updateEllipse(pos) {
@@ -787,7 +825,7 @@ export default function DetectionCanvas({
       finalizePoint();
     }
   }
-
+  
   // ----------- Copy/Paste Keyboard Listener -----------
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -816,7 +854,7 @@ export default function DetectionCanvas({
           onAnnotationsChange([...annotations, newAnn]);
         }
       }
-
+  
       // Remove last "drawing" point if user is in the middle of creating polygon, etc.
       if (e.key === 'Backspace' || e.key === 'Delete') {
         // Polygon
@@ -844,7 +882,7 @@ export default function DetectionCanvas({
         }
       }
     };
-
+  
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
@@ -860,13 +898,13 @@ export default function DetectionCanvas({
     tempPolyline,
     tempPointPoints,
   ]);
-
+  
   // ----------- Draggable logic for entire shapes -----------
   const handleBBoxDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const updated = [...annotations];
     updated[index] = { ...updated[index], x, y };
-
+  
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -881,12 +919,12 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-
+  
   const handleEllipseDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const updated = [...annotations];
     updated[index] = { ...updated[index], x, y };
-
+  
     if (
       konvaImg &&
       isPartiallyOutside(updated[index], konvaImg.width, konvaImg.height)
@@ -904,12 +942,12 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-
+  
   const handlePointDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const updated = [...annotations];
     updated[index] = { ...updated[index], x, y };
-
+  
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -924,7 +962,7 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-
+  
   const handlePolylineDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const ann = annotations[index];
@@ -935,7 +973,7 @@ export default function DetectionCanvas({
     const updated = [...annotations];
     updated[index] = { ...ann, points: newPoints };
     e.target.position({ x: 0, y: 0 });
-
+  
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -950,7 +988,7 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-
+  
   const handlePolygonDragEnd = (index, e) => {
     const { x, y } = e.target.position();
     const ann = annotations[index];
@@ -961,7 +999,7 @@ export default function DetectionCanvas({
     const updated = [...annotations];
     updated[index] = { ...ann, points: newPoints };
     e.target.position({ x: 0, y: 0 });
-
+  
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[index],
@@ -976,14 +1014,14 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-
+  
   // ----------- Remove an individual vertex -----------
   function handleRemoveVertex(annIndex, vertexIndex) {
     const updated = [...annotations];
     const ann = { ...updated[annIndex] };
     const shapePoints = [...ann.points];
     shapePoints.splice(vertexIndex, 1);
-
+  
     if (ann.type === 'polygon' && shapePoints.length < 3) {
       updated.splice(annIndex, 1);
     } else if (ann.type === 'polyline' && shapePoints.length < 2) {
@@ -994,21 +1032,21 @@ export default function DetectionCanvas({
       ann.points = shapePoints;
       updated[annIndex] = ann;
     }
-
+  
     onAnnotationsChange(updated);
   }
-
+  
   // ----------- Insert a new vertex between current vertex and next -----------
   function handleInsertVertex(annIndex, vertexIndex) {
     const updated = [...annotations];
     const ann = { ...updated[annIndex] };
-
+  
     if (ann.type !== 'polygon' && ann.type !== 'polyline') return;
-
+  
     const shapePoints = [...ann.points];
     const length = shapePoints.length;
     if (length < 2) return;
-
+  
     let nextIndex;
     if (ann.type === 'polygon') {
       nextIndex = (vertexIndex + 1) % length;
@@ -1018,20 +1056,20 @@ export default function DetectionCanvas({
       }
       nextIndex = vertexIndex + 1;
     }
-
+  
     const currentPt = shapePoints[vertexIndex];
     const nextPt = shapePoints[nextIndex];
-
+  
     const midX = (currentPt.x + nextPt.x) / 2;
     const midY = (currentPt.y + nextPt.y) / 2;
-
-    shapePoints.splice(vertexIndex + 1, 1, { x: midX, y: midY });
-
+  
+    shapePoints.splice(vertexIndex + 1, 0, { x: midX, y: midY });
+  
     ann.points = shapePoints;
     updated[annIndex] = ann;
     onAnnotationsChange(updated);
   }
-
+  
   // ----------- Draggable logic for each vertex -----------
   const handleVertexDragEnd = (annIndex, vertexIndex, e) => {
     e.cancelBubble = true;
@@ -1040,7 +1078,7 @@ export default function DetectionCanvas({
     const shapePoints = [...updated[annIndex].points];
     shapePoints[vertexIndex] = { x, y };
     updated[annIndex] = { ...updated[annIndex], points: shapePoints };
-
+  
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updated[annIndex],
@@ -1055,12 +1093,12 @@ export default function DetectionCanvas({
     }
     onAnnotationsChange(updated);
   };
-
+  
   // ----------- Transformer logic (for bbox & ellipse) -----------
   useEffect(() => {
     const tr = transformerRef.current;
     if (!tr) return;
-
+  
     if (selectedAnnotationIndex == null) {
       tr.nodes([]);
       return;
@@ -1073,20 +1111,20 @@ export default function DetectionCanvas({
       tr.nodes([]);
     }
   }, [selectedAnnotationIndex, annotations]);
-
+  
   const handleTransformEnd = () => {
     if (selectedAnnotationIndex == null) return;
     const shapeNode = shapeRefs.current[selectedAnnotationIndex];
     if (!shapeNode) return;
-
+  
     const ann = annotations[selectedAnnotationIndex];
     const scaleX = shapeNode.scaleX();
     const scaleY = shapeNode.scaleY();
     const offsetX = shapeNode.x();
     const offsetY = shapeNode.y();
-
+  
     let updatedAnn = { ...ann };
-
+  
     switch (ann.type) {
       case 'bbox': {
         const newWidth = shapeNode.width() * scaleX;
@@ -1109,15 +1147,15 @@ export default function DetectionCanvas({
       default:
         break;
     }
-
+  
     shapeNode.scaleX(1);
     shapeNode.scaleY(1);
     shapeNode.x(0);
     shapeNode.y(0);
-
+  
     const updatedAll = [...annotations];
     updatedAll[selectedAnnotationIndex] = updatedAnn;
-
+  
     if (konvaImg) {
       const clipped = clipAnnotationToBoundary(
         updatedAnn,
@@ -1130,10 +1168,10 @@ export default function DetectionCanvas({
         updatedAll[selectedAnnotationIndex] = clipped;
       }
     }
-
+  
     onAnnotationsChange(updatedAll);
   };
-
+  
   return (
     <div className="canvas-container" ref={containerRef}>
       <Stage
@@ -1166,14 +1204,16 @@ export default function DetectionCanvas({
                 image={konvaImg}
                 width={konvaImg.width}
                 height={konvaImg.height}
+                name="background-image"
               />
             )}
-
+  
             {/* Render existing annotations */}
             {annotations.map((ann, i) => {
               const annColor = ann.color || activeLabelColor || '#ff0000';
               const fillColor = annColor + '55';
-
+              const opacity = ann.opacity !== undefined ? ann.opacity : 1.0;
+  
               if (ann.type === 'bbox') {
                 return (
                   <React.Fragment key={i}>
@@ -1186,6 +1226,7 @@ export default function DetectionCanvas({
                       fill={fillColor}
                       stroke={annColor}
                       strokeWidth={2 / scale}
+                      opacity={opacity}
                       draggable
                       onMouseDown={(e) => (e.cancelBubble = true)}
                       onDragStart={(e) => (e.cancelBubble = true)}
@@ -1227,6 +1268,7 @@ export default function DetectionCanvas({
                       fill={fillColor}
                       stroke={annColor}
                       strokeWidth={2 / scale}
+                      opacity={opacity}
                       draggable
                       onMouseDown={(e) => (e.cancelBubble = true)}
                       onDragStart={(e) => (e.cancelBubble = true)}
@@ -1263,6 +1305,7 @@ export default function DetectionCanvas({
                       y={ann.y}
                       radius={6 / scale}
                       fill={annColor}
+                      opacity={opacity}
                       draggable
                       onMouseDown={(e) => (e.cancelBubble = true)}
                       onDragEnd={(e) => {
@@ -1315,6 +1358,7 @@ export default function DetectionCanvas({
                         stroke={annColor}
                         strokeWidth={2 / scale}
                         closed={false}
+                        opacity={opacity}
                       />
                       {ann.points.map((pt, idx) => (
                         <Circle
@@ -1325,6 +1369,7 @@ export default function DetectionCanvas({
                           fill="#fff"
                           stroke={annColor}
                           strokeWidth={1 / scale}
+                          opacity={opacity}
                           draggable
                           onMouseDown={(ev) => (ev.cancelBubble = true)}
                           onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
@@ -1344,6 +1389,7 @@ export default function DetectionCanvas({
                         fill={annColor}
                         stroke={annColor}
                         strokeWidth={2 / scale}
+                        opacity={opacity}
                         pointerLength={10 / scale}
                         pointerWidth={8 / scale}
                       />
@@ -1386,6 +1432,7 @@ export default function DetectionCanvas({
                           stroke={annColor}
                           strokeWidth={2 / scale}
                           fillRule="evenodd"
+                          opacity={opacity}
                         />
                         {ann.points.map((pt, idx) => (
                           <Circle
@@ -1396,6 +1443,7 @@ export default function DetectionCanvas({
                             fill="#fff"
                             stroke={annColor}
                             strokeWidth={1 / scale}
+                            opacity={opacity}
                             draggable
                             onMouseDown={(ev) => (ev.cancelBubble = true)}
                             onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
@@ -1451,6 +1499,7 @@ export default function DetectionCanvas({
                           stroke={annColor}
                           strokeWidth={2 / scale}
                           closed
+                          opacity={opacity}
                         />
                         {ann.points.map((pt, idx) => (
                           <Circle
@@ -1461,6 +1510,7 @@ export default function DetectionCanvas({
                             fill="#fff"
                             stroke={annColor}
                             strokeWidth={1 / scale}
+                            opacity={opacity}
                             draggable
                             onMouseDown={(ev) => (ev.cancelBubble = true)}
                             onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
@@ -1480,6 +1530,7 @@ export default function DetectionCanvas({
                           fill={annColor}
                           stroke={annColor}
                           strokeWidth={2 / scale}
+                          opacity={opacity}
                           pointerLength={10 / scale}
                           pointerWidth={8 / scale}
                         />
@@ -1522,6 +1573,7 @@ export default function DetectionCanvas({
                           y={pt.y}
                           radius={6 / scale}
                           fill={annColor}
+                          opacity={opacity}
                           draggable
                           onMouseDown={(ev) => (ev.cancelBubble = true)}
                           onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
@@ -1549,7 +1601,7 @@ export default function DetectionCanvas({
               }
               return null;
             })}
-
+  
             {/* In-progress BBox */}
             {newBox && selectedTool === 'bbox' && (
               <Rect
@@ -1562,7 +1614,7 @@ export default function DetectionCanvas({
                 strokeWidth={2 / scale}
               />
             )}
-
+  
             {/* In-progress Polygon */}
             {drawingPolygon && selectedTool === 'polygon' && (
               <>
@@ -1588,7 +1640,7 @@ export default function DetectionCanvas({
                 ))}
               </>
             )}
-
+  
             {/* In-progress Polyline */}
             {drawingPolyline && selectedTool === 'polyline' && (
               <>
@@ -1613,7 +1665,7 @@ export default function DetectionCanvas({
                 ))}
               </>
             )}
-
+  
             {/* In-progress Ellipse */}
             {newEllipse && selectedTool === 'ellipse' && (
               <Ellipse
@@ -1627,7 +1679,7 @@ export default function DetectionCanvas({
                 strokeWidth={2 / scale}
               />
             )}
-
+  
             {/* In-progress Points */}
             {drawingPoint && selectedTool === 'point' && (
               <>
@@ -1645,7 +1697,7 @@ export default function DetectionCanvas({
               </>
             )}
           </Group>
-
+  
           {/* Transformer (only for bbox & ellipse) */}
           <Transformer
             ref={transformerRef}
@@ -1659,8 +1711,8 @@ export default function DetectionCanvas({
       </Stage>
     </div>
   );
-}
-
+  }
+  
 // A small Konva Label to let user delete a selected annotation
 function DeleteLabel({ annotation, scale, shapeBoundingBox, onDelete, color }) {
   const box = shapeBoundingBox(annotation);
