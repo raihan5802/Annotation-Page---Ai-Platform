@@ -1,2 +1,4 @@
 task_id,user_id,task_name,folder_path,task_type,created_at
 caf184f9-60a2-4ca3-a6cc-a659ff11a8cb,1740077374191,task1,uploads/d24e130e-2c9f-4d25-9137-47e9d673b45e,detection,2025-02-24T07:07:08.086Z
+c6ecbb52-ccf0-4c31-80e3-de4604a98d6b,1740077374191,xyz,uploads/beb7d004-6eb8-4434-80a5-4819e62b6d4c,detection,2025-02-24T11:23:34.970Z
+524cf5c9-db5f-4ef6-a4bd-a923c2410f74,1740077374191,yxs,uploads/f203dc37-3a89-4639-b2bb-d71cd8225230,classification,2025-02-24T11:24:17.614Z

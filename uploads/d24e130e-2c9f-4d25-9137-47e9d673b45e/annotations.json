@@ -1,0 +1,29 @@
+{
+  "taskName": "task1",
+  "labelClasses": [],
+  "annotations": {
+    "http://localhost:4000/uploads/d24e130e-2c9f-4d25-9137-47e9d673b45e/360_F_319476726_d93IxRi38qeJM1sYnXeZnK02z023XKJ1.jpg": [
+      {
+        "type": "bbox",
+        "x": 79.5,
+        "y": 61.5,
+        "width": 188,
+        "height": 101,
+        "opacity": 1,
+        "label": "",
+        "color": "#ff0000"
+      },
+      {
+        "type": "bbox",
+        "x": 298.5,
+        "y": 109.5,
+        "width": 179,
+        "height": 86,
+        "opacity": 1,
+        "label": "",
+        "color": "#ff0000"
+      }
+    ]
+  },
+  "lastUpdated": "2025-02-24T11:04:52.881Z"
+}
