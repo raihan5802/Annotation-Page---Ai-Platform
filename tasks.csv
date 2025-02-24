@@ -1,4 +1,2 @@
 task_id,user_id,task_name,folder_path,task_type,label_classes,created_at
-9dc2a56c-f7fd-4a7b-aa01-bee16ea8e9bb,1740077374191,detec,uploads/ac92bf76-a27a-43fc-b68b-d2a79831aab6,detection,[{"name":"d1"|"color":"#e6194B"}|{"name":"d2"|"color":"#3cb44b"}],2025-02-24T13:39:51.454Z
-bfacdf0e-226c-4c43-8136-f61566d179a5,1740077374191,seg,uploads/71e3f52c-1838-4f4e-98e5-e229536c98be,segmentation,[{"name":"s1"|"color":"#e6194B"}|{"name":"s2"|"color":"#3cb44b"}],2025-02-24T13:40:13.174Z
-44876226-759a-4451-b7bc-609306552f67,1740077374191,clas,uploads/d92650ab-6e3e-4ce1-a5f3-f6d4709fe388,classification,[{"name":"c1"|"color":"#e6194B"}|{"name":"c2"|"color":"#000000"}],2025-02-24T13:40:30.074Z
+c955cdbd-3fb3-4a17-a4a1-d6d4efea0853,1740077374191,detec,uploads/f8bc6cab-133e-4548-a172-f9a95202e518,detection,[{"name":"d1"|"color":"#e6194B"}],2025-02-24T17:49:21.784Z

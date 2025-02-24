@@ -122,12 +122,41 @@ const OpacityIcon = () => (
   </svg>
 );
 
+const AddImageIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+    <line x1="12" y1="9" x2="12" y2="15" />
+    <line x1="9" y1="12" x2="15" y2="12" />
+  </svg>
+);
+
+const DeleteImageIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+    <line x1="9" y1="9" x2="15" y2="15" />
+    <line x1="15" y1="9" x2="9" y2="15" />
+  </svg>
+);
+
 export default function Detection() {
   const navigate = useNavigate();
   const { state } = useLocation();
   const folderInfo = state?.folderInfo;
   const canvasHelperRef = useRef(null);
   const canvasAreaRef = useRef(null);
+
+  // Add this near the top of your component
+  const fileInputRef = useRef(null);
+  const [filesList, setFilesList] = useState(() => {
+    return folderInfo?.files || [];
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
 
   if (!folderInfo) {
     return (
@@ -138,7 +167,7 @@ export default function Detection() {
     );
   }
 
-  const { folderId, taskName, labelClasses, files } = folderInfo;
+  const { folderId, taskId, taskName, labelClasses, files } = folderInfo;
 
   // -------------- Annotations for each image --------------
   const [annotations, setAnnotations] = useState(() => {
@@ -168,7 +197,7 @@ export default function Detection() {
   const [localLabelClasses, setLocalLabelClasses] = useState(labelClasses);
 
   const [scale, setScale] = useState(1.0);
-  const currentFileUrl = files[currentIndex]?.url;
+  const currentFileUrl = filesList[currentIndex]?.url;
   const currentShapes = annotations[currentFileUrl] || [];
 
   // New state for points‐limit modal for polygon, polyline, and point tools
@@ -661,8 +690,137 @@ export default function Detection() {
     (l) => l.name === selectedLabelClass
   )?.color || '#ff0000';
 
+  // Add Image handler
+  const handleAddImage = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileSelect = async (e) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    setIsUploading(true);
+    showHelper('Uploading image(s)...');
+
+    const formData = new FormData();
+    // Add each file to the form data
+    for (let i = 0; i < selectedFiles.length; i++) {
+      formData.append('files', selectedFiles[i]);
+    }
+
+    // Make sure we're explicitly passing the folderId
+    console.log("Uploading to folder:", folderId);
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/images/${folderId}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload images');
+      }
+
+      const result = await response.json();
+      console.log("Upload result:", result);
+
+      if (result.files && result.files.length > 0) {
+        // Create a new array with all existing files plus new ones
+        const newFilesList = [...filesList, ...result.files];
+        setFilesList(newFilesList);
+
+        // Navigate to the first new image
+        setCurrentIndex(filesList.length);
+
+        showHelper(`Added ${result.files.length} new image(s)`);
+      } else {
+        showHelper('No new images were added');
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      showHelper('Error uploading image(s): ' + error.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Delete Image handler
+  const handleDeleteImage = () => {
+    if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) {
+      showHelper('No image to delete');
+      return;
+    }
+
+    setShowConfirmDeleteModal(true);
+  };
+
+  const confirmDeleteImage = async () => {
+    if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) return;
+
+    const currentFile = filesList[currentIndex];
+    setIsDeleting(true);
+
+    try {
+      // Extract filename from URL
+      // URL format is typically: http://localhost:4000/uploads/FOLDER_ID/FILENAME
+      const urlParts = currentFile.url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+
+      const response = await fetch(`http://localhost:4000/api/images/${folderId}/${filename}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete image');
+      }
+
+      // Remove deleted file from the list
+      const updatedFiles = [...filesList];
+      updatedFiles.splice(currentIndex, 1);
+
+      // Remove annotations for this file
+      const updatedAnnotations = { ...annotations };
+      delete updatedAnnotations[currentFile.url];
+
+      // Update state
+      setFilesList(updatedFiles);
+      setAnnotations(updatedAnnotations);
+
+      // Adjust current index if needed
+      if (currentIndex >= updatedFiles.length && updatedFiles.length > 0) {
+        setCurrentIndex(updatedFiles.length - 1);
+      } else if (updatedFiles.length === 0) {
+        // Handle case when all images are deleted
+        setCurrentIndex(0);
+      }
+
+      showHelper('Image deleted successfully');
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      showHelper('Error deleting image');
+    } finally {
+      setIsDeleting(false);
+      setShowConfirmDeleteModal(false);
+    }
+  };
+
   return (
+
     <div className="annotate-container">
+
+      {/* Hidden file input for adding images */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+        accept="image/*"
+        multiple
+      />
+
       <HomeTopBar
         taskName={taskName}
         showControls={true}
@@ -693,6 +851,13 @@ export default function Detection() {
         <button onClick={handleNext} disabled={currentIndex >= files.length - 1}>
           Next
         </button>
+        {/* In the annotate-actions section, add these buttons after the Next button */}
+        <button onClick={handleAddImage} disabled={isUploading} title="Add Image">
+          <AddImageIcon /> Add Image
+        </button>
+        <button onClick={handleDeleteImage} disabled={isDeleting || filesList.length === 0} title="Delete Current Image">
+          <DeleteImageIcon /> Delete Image
+        </button>
         <button onClick={() => setShowShortcuts(true)}>
           Keyboard Shortcuts
         </button>
@@ -701,7 +866,7 @@ export default function Detection() {
         <button onClick={handleZoomIn}>+ Zoom</button>
         <button onClick={() => { }}>Export</button>
         <span className="img-count">
-          {currentIndex + 1} / {files.length}
+          {currentIndex + 1} / {filesList.length}
         </span>
       </div>
 
@@ -917,6 +1082,24 @@ export default function Detection() {
                   setPointsLimitInput('');
                 }}
               >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add this at the bottom of your component, near other modals */}
+      {showConfirmDeleteModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete this image? This action cannot be undone.</p>
+            <div className="modal-footer">
+              <button onClick={confirmDeleteImage} className="primary" disabled={isDeleting}>
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+              <button onClick={() => setShowConfirmDeleteModal(false)} className="secondary">
                 Cancel
               </button>
             </div>
