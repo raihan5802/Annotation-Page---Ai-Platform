@@ -234,6 +234,61 @@ app.post('/api/signin', (req, res) => {
   }
 });
 
+// Add these endpoints to server.js
+
+// Delete image endpoint
+app.delete('/api/images/:folderId/:filename', (req, res) => {
+  try {
+    const { folderId, filename } = req.params;
+    const imagePath = path.join(__dirname, 'uploads', folderId, filename);
+
+    // Check if file exists
+    if (!fs.existsSync(imagePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // Delete the file
+    fs.unlinkSync(imagePath);
+
+    // Remove annotations for this image if they exist
+    const annotationsPath = path.join(__dirname, 'uploads', folderId, 'annotations.json');
+    if (fs.existsSync(annotationsPath)) {
+      const annotations = JSON.parse(fs.readFileSync(annotationsPath));
+      const imageUrl = `http://localhost:${PORT}/uploads/${folderId}/${filename}`;
+      if (annotations[imageUrl]) {
+        delete annotations[imageUrl];
+        fs.writeFileSync(annotationsPath, JSON.stringify(annotations, null, 2));
+      }
+    }
+
+    res.json({ message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    res.status(500).json({ error: 'Failed to delete image' });
+  }
+});
+
+// Add images to existing folder endpoint
+const addImagesUpload = multer({ storage }).array('files');
+app.post('/api/images/:folderId', (req, res) => {
+  addImagesUpload(req, res, (err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to upload files' });
+    }
+
+    const folderId = req.params.folderId;
+    const uploadedFiles = req.files.map((f) => ({
+      originalname: f.originalname,
+      url: `http://localhost:${PORT}/uploads/${folderId}/${f.originalname}`
+    }));
+
+    res.json({
+      files: uploadedFiles,
+      message: 'Upload success'
+    });
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

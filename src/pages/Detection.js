@@ -197,6 +197,12 @@ export default function Detection() {
     setSelectedAnnotationIndex(null);
   }, [currentIndex, currentFileUrl]);
 
+  // shortcut for n/N to draw last drawn annotation
+  const [lastToolState, setLastToolState] = useState({
+    tool: null,
+    pointsLimit: 0
+  });
+
   // Display helper text when tool is changed
   useEffect(() => {
     if (selectedTool === 'move') {
@@ -488,6 +494,15 @@ export default function Detection() {
         e.preventDefault();
         redo();
       }
+
+      if (key === 'n' || key === 'N') {
+        if (lastToolState.tool) {
+          setCurrentPointsLimit(lastToolState.pointsLimit);
+          setSelectedTool(lastToolState.tool);
+          showHelper(`Resumed ${lastToolState.tool} tool`);
+        }
+      }
+
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -583,7 +598,12 @@ export default function Detection() {
   };
 
   // -------------- When annotation finishes => switch to move --------------
+  // Modify handleFinishShape in both files to store the last tool state
   const handleFinishShape = () => {
+    setLastToolState({
+      tool: selectedTool,
+      pointsLimit: currentPointsLimit
+    });
     setSelectedTool('move');
     setSelectedAnnotationIndex(null);
     showHelper('Annotation completed');

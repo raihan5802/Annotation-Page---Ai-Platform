@@ -165,6 +165,14 @@ export default function Segmentation() {
         setAnnotations(updated);
     };
 
+    //shortcut for n/N to draw last drawn annotation
+    const [lastToolState, setLastToolState] = useState({
+        tool: null,
+        pointsLimit: 0,
+        segmentationType: null,  // Only for Segmentation.js
+        panopticOption: null     // Only for Segmentation.js
+    });
+
     // Display helper text when tool is changed
     useEffect(() => {
         if (selectedTool === 'move') {
@@ -427,10 +435,23 @@ export default function Segmentation() {
                 e.preventDefault();
                 redo();
             }
+
+            if (key === 'n' || key === 'N') {
+                if (lastToolState.tool) {
+                    setCurrentPointsLimit(lastToolState.pointsLimit);
+                    setSelectedTool(lastToolState.tool);
+                    if (lastToolState.segmentationType) {  // Only for Segmentation.js
+                        setSegmentationType(lastToolState.segmentationType);
+                        setPanopticOption(lastToolState.panopticOption);
+                    }
+                    showHelper(`Resumed ${lastToolState.tool} tool`);
+                }
+            }
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
     }, [annotations, undoStack, redoStack, selectedAnnotationIndex]);
+
 
     // -------------- Add Label Modal --------------
     const [showAddLabelModal, setShowAddLabelModal] = useState(false);
@@ -522,8 +543,16 @@ export default function Segmentation() {
     };
 
     // -------------- When annotation finishes => switch to move --------------
+    // Modify handleFinishShape in both files to store the last tool state
     const handleFinishShape = () => {
+        setLastToolState({
+            tool: selectedTool,
+            pointsLimit: currentPointsLimit,
+            segmentationType: segmentationType,  // Only for Segmentation.js
+            panopticOption: panopticOption      // Only for Segmentation.js
+        });
         setSelectedTool('move');
+        setSelectedAnnotationIndex(null);
         showHelper('Annotation completed');
     };
 

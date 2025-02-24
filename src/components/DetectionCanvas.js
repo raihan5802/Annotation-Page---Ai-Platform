@@ -98,6 +98,8 @@ export default function DetectionCanvas({
   // For copy/paste
   const [copiedAnnotation, setCopiedAnnotation] = useState(null);
 
+  //For icon-change during annotation
+  const crosshairCursor = `url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="10" x2="50" y2="45" stroke="black" stroke-width="2"/><line x1="50" y1="55" x2="50" y2="90" stroke="black" stroke-width="2"/><line x1="10" y1="50" x2="45" y2="50" stroke="black" stroke-width="2"/><line x1="55" y1="50" x2="90" y2="50" stroke="black" stroke-width="2"/><circle cx="50" cy="50" r="1" fill="black"/></svg>') 50 50, crosshair`;
 
   // Synchronize the internal state with the external one
   useEffect(() => {
@@ -1194,7 +1196,10 @@ export default function DetectionCanvas({
         height={dims.height}
         scaleX={scale}
         scaleY={scale}
-        style={{ background: '#dfe6e9' }}
+        style={{
+          background: '#dfe6e9',
+          cursor: selectedTool === 'move' ? 'grab' : crosshairCursor
+        }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
