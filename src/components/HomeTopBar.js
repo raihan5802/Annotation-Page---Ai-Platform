@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './HomeTopBar.css';
 
-function HomeTopBar() {
+function HomeTopBar({
+    taskName,
+    onPrev,
+    onNext,
+    onSave,
+    onZoomIn,
+    onZoomOut,
+    onExport,
+    currentIndex,
+    total,
+    showControls = false, // New prop to determine if we show the annotation controls
+    isSaving = false
+}) {
     const navigate = useNavigate();
+    const location = useLocation();
     const [user, setUser] = useState(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -14,7 +27,6 @@ function HomeTopBar() {
             setUser(storedUser);
         }
 
-        // Add click outside listener
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false);
@@ -29,30 +41,45 @@ function HomeTopBar() {
         localStorage.removeItem('user');
         setUser(null);
         setIsDropdownOpen(false);
-        navigate('/');  // Navigate to home page instead of signin
+        navigate('/');
     };
 
     const toggleDropdown = () => {
         setIsDropdownOpen(!isDropdownOpen);
     };
 
+    // Regular menu items for home/images pages
+    const regularMenu = (
+        <div className="menu">
+            <div className="menu-item">
+                <span>Product</span>
+            </div>
+            <div className="menu-item">
+                <span>Pricing</span>
+            </div>
+            <div className="menu-item">
+                <span>Resources</span>
+            </div>
+            <div className="menu-item">
+                <span>Company</span>
+            </div>
+        </div>
+    );
+
+    // Task name and controls for annotation pages
+    const annotationMenu = (
+        <div className="menu annotation-menu">
+            {taskName && <div className="task-name">Task: {taskName}</div>}
+        </div>
+    );
+
     return (
         <div className="home-topbar">
             <div className="logo" onClick={() => navigate('/')}>AI Platform</div>
-            <div className="menu">
-                <div className="menu-item">
-                    <span>Product</span>
-                </div>
-                <div className="menu-item">
-                    <span>Pricing</span>
-                </div>
-                <div className="menu-item">
-                    <span>Resources</span>
-                </div>
-                <div className="menu-item">
-                    <span>Company</span>
-                </div>
-            </div>
+
+            {/* Show different menu based on page */}
+            {showControls ? annotationMenu : regularMenu}
+
             <div className="user-section">
                 {user ? (
                     <div

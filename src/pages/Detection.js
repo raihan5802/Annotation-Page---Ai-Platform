@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import AnnotationTopBar from '../components/AnnotationTopBar';
+import HomeTopBar from '../components/HomeTopBar';
 import DetectionCanvas from '../components/DetectionCanvas';
 import AnnotationListSidebar from '../components/AnnotationListSidebar';
 import './Detection.css';
@@ -569,7 +569,8 @@ export default function Detection() {
     }
   }, [showAddLabelModal, localLabelClasses]);
 
-  const handleAddNewLabel = () => {
+  // Update the handleAddNewLabel function in Detection.js
+  const handleAddNewLabel = async () => {
     if (!newLabelName.trim()) {
       showHelper('Label name cannot be empty');
       return;
@@ -588,13 +589,49 @@ export default function Detection() {
       showHelper('Label color already used. Please choose a different color.');
       return;
     }
+
     const newLabel = { name: newLabelName.trim(), color: newLabelColor };
-    setLocalLabelClasses([...localLabelClasses, newLabel]);
-    setSelectedLabelClass(newLabel.name);
-    setNewLabelName('');
-    setNewLabelColor('#ff0000');
-    setShowAddLabelModal(false);
-    showHelper(`Added new label: ${newLabel.name}`);
+    const updatedLabels = [...localLabelClasses, newLabel];
+
+    try {
+      // Update labels in tasks.csv
+      const updateLabelsRes = await fetch(`http://localhost:4000/api/tasks/${folderInfo.taskId}/labels`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ labelClasses: updatedLabels })
+      });
+
+      if (!updateLabelsRes.ok) {
+        throw new Error('Failed to update labels in task');
+      }
+
+      // Update annotations.json with new labels
+      const annotationsRes = await fetch('http://localhost:4000/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folderId: folderInfo.folderId,
+          taskName: taskName,
+          labelClasses: updatedLabels,
+          annotations: annotations
+        })
+      });
+
+      if (!annotationsRes.ok) {
+        throw new Error('Failed to update annotations');
+      }
+
+      // Update local state
+      setLocalLabelClasses(updatedLabels);
+      setSelectedLabelClass(newLabel.name);
+      setNewLabelName('');
+      setNewLabelColor('#ff0000');
+      setShowAddLabelModal(false);
+      showHelper(`Added new label: ${newLabel.name}`);
+    } catch (error) {
+      console.error('Error updating labels:', error);
+      showHelper('Failed to add new label: ' + error.message);
+    }
   };
 
   // -------------- When annotation finishes => switch to move --------------
@@ -626,17 +663,10 @@ export default function Detection() {
 
   return (
     <div className="annotate-container">
-      <AnnotationTopBar
-        onHome={() => navigate('/')}
-        onPrev={handlePrev}
-        onNext={handleNext}
-        onSave={handleSave}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onExport={() => { }}
-        currentIndex={currentIndex}
-        total={files.length}
+      <HomeTopBar
         taskName={taskName}
+        showControls={true}
+        isSaving={isSaving}
       />
 
       <div className="annotate-actions">
@@ -656,6 +686,23 @@ export default function Detection() {
         <button onClick={handleCenterImage} title="Center Image (C)">
           <CenterIcon /> Center
         </button>
+        <div className="divider"></div>
+        <button onClick={handlePrev} disabled={currentIndex <= 0}>
+          Prev
+        </button>
+        <button onClick={handleNext} disabled={currentIndex >= files.length - 1}>
+          Next
+        </button>
+        <button onClick={() => setShowShortcuts(true)}>
+          Keyboard Shortcuts
+        </button>
+        <div className="divider"></div>
+        <button onClick={handleZoomOut}>- Zoom</button>
+        <button onClick={handleZoomIn}>+ Zoom</button>
+        <button onClick={() => { }}>Export</button>
+        <span className="img-count">
+          {currentIndex + 1} / {files.length}
+        </span>
       </div>
 
       <div className="annotate-main">

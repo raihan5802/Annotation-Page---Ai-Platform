@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import HomeTopBar from '../components/HomeTopBar';
 import './ImageHome.css';
 
 const COLOR_PALETTE = [
@@ -55,7 +56,8 @@ export default function ImageHome() {
     return col;
   };
 
-  const handleAddLabel = () => {
+  // Modify handleAddLabel in ImageHome.js
+  const handleAddLabel = async () => {
     if (!labelName.trim()) {
       alert('Label name is empty');
       return;
@@ -74,14 +76,91 @@ export default function ImageHome() {
       alert('Label color already used. Please choose a different color.');
       return;
     }
+
     const newLabel = { name: labelName.trim(), color: labelColor };
-    setLabelClasses([...labelClasses, newLabel]);
+    const updatedLabels = [...labelClasses, newLabel];
+
+    // If we have folderData, this means a task has been created
+    if (folderData?.taskId) {
+      try {
+        // Update the task's label classes in CSV
+        const updateLabelsRes = await fetch(`http://localhost:4000/api/tasks/${folderData.taskId}/labels`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ labelClasses: updatedLabels })
+        });
+
+        if (!updateLabelsRes.ok) {
+          throw new Error('Failed to update labels in task');
+        }
+
+        // Update annotations.json with new labels
+        const annotationsRes = await fetch('http://localhost:4000/api/annotations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            folderId: folderData.folderId,
+            taskName: taskName,
+            labelClasses: updatedLabels,
+            annotations: {} // Keep existing annotations if any
+          })
+        });
+
+        if (!annotationsRes.ok) {
+          throw new Error('Failed to update annotations');
+        }
+      } catch (error) {
+        console.error('Error updating labels:', error);
+        alert('Failed to update labels: ' + error.message);
+        return;
+      }
+    }
+
+    setLabelClasses(updatedLabels);
     setLabelName('');
     setLabelColor(getNextColor());
   };
 
-  const handleRemoveLabel = (i) => {
-    setLabelClasses(labelClasses.filter((_, idx) => idx !== i));
+  // Also update handleRemoveLabel to handle both updates
+  const handleRemoveLabel = async (i) => {
+    const updatedLabels = labelClasses.filter((_, idx) => idx !== i);
+
+    if (folderData?.taskId) {
+      try {
+        // Update the task's label classes in CSV
+        const updateLabelsRes = await fetch(`http://localhost:4000/api/tasks/${folderData.taskId}/labels`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ labelClasses: updatedLabels })
+        });
+
+        if (!updateLabelsRes.ok) {
+          throw new Error('Failed to update labels in task');
+        }
+
+        // Update annotations.json with removed label
+        const annotationsRes = await fetch('http://localhost:4000/api/annotations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            folderId: folderData.folderId,
+            taskName: taskName,
+            labelClasses: updatedLabels,
+            annotations: {} // Keep existing annotations if any
+          })
+        });
+
+        if (!annotationsRes.ok) {
+          throw new Error('Failed to update annotations');
+        }
+      } catch (error) {
+        console.error('Error updating labels:', error);
+        alert('Failed to update labels: ' + error.message);
+        return;
+      }
+    }
+
+    setLabelClasses(updatedLabels);
   };
 
   const handleUpload = async () => {
@@ -129,7 +208,8 @@ export default function ImageHome() {
           userId: userSession.id,
           taskName: taskName,
           folderId: uploadData.folderId,
-          taskType: taskType
+          taskType: taskType,
+          labelClasses: labelClasses
         })
       });
 
@@ -158,75 +238,78 @@ export default function ImageHome() {
   };
 
   return (
-    <div className="image-home-container">
-      <h2>Create a New Image Annotation Task</h2>
-      <div className="form-area">
-        <label>Task Name</label>
-        <input
-          type="text"
-          value={taskName}
-          onChange={(e) => setTaskName(e.target.value)}
-          placeholder="e.g. My Dataset"
-        />
-      </div>
-
-      <div className="labels-section">
-        <h3>Label Classes</h3>
-        <div className="label-form">
+    <div className='parent-container'>
+      <HomeTopBar />
+      <div className="image-home-container">
+        <h2>Create a New Image Annotation Task</h2>
+        <div className="form-area">
+          <label>Task Name</label>
           <input
             type="text"
-            placeholder="e.g. Car"
-            value={labelName}
-            onChange={(e) => setLabelName(e.target.value)}
+            value={taskName}
+            onChange={(e) => setTaskName(e.target.value)}
+            placeholder="e.g. My Dataset"
           />
+        </div>
+
+        <div className="labels-section">
+          <h3>Label Classes</h3>
+          <div className="label-form">
+            <input
+              type="text"
+              placeholder="e.g. Car"
+              value={labelName}
+              onChange={(e) => setLabelName(e.target.value)}
+            />
+            <input
+              type="color"
+              value={labelColor}
+              onChange={(e) => setLabelColor(e.target.value)}
+            />
+            <button onClick={handleAddLabel}>Add</button>
+          </div>
+          <ul className="label-list">
+            {labelClasses.map((lc, i) => (
+              <li key={i}>
+                <span className="color-box" style={{ background: lc.color }} />
+                {lc.name}
+                <button onClick={() => handleRemoveLabel(i)}>X</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="form-area">
+          <label>Select Images</label>
           <input
-            type="color"
-            value={labelColor}
-            onChange={(e) => setLabelColor(e.target.value)}
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFileChange}
           />
-          <button onClick={handleAddLabel}>Add</button>
         </div>
-        <ul className="label-list">
-          {labelClasses.map((lc, i) => (
-            <li key={i}>
-              <span className="color-box" style={{ background: lc.color }} />
-              {lc.name}
-              <button onClick={() => handleRemoveLabel(i)}>X</button>
-            </li>
-          ))}
-        </ul>
-      </div>
 
-      <div className="form-area">
-        <label>Select Images</label>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleFileChange}
-        />
-      </div>
+        {previews.length > 0 && (
+          <div className="preview-grid">
+            {previews.map((p, i) => (
+              <div key={i} className="preview-item">
+                <img src={p.url} alt={p.name} />
+                <p>{p.name}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {previews.length > 0 && (
-        <div className="preview-grid">
-          {previews.map((p, i) => (
-            <div key={i} className="preview-item">
-              <img src={p.url} alt={p.name} />
-              <p>{p.name}</p>
-            </div>
-          ))}
+        <div className="buttons-row">
+          <button onClick={handleUpload}>Upload</button>
+          <button onClick={goAnnotate} disabled={!folderData}>
+            {segmentationMode
+              ? 'Go to Segmentation'
+              : classificationMode
+                ? 'Go to Classification'
+                : 'Go to Detection'}
+          </button>
         </div>
-      )}
-
-      <div className="buttons-row">
-        <button onClick={handleUpload}>Upload</button>
-        <button onClick={goAnnotate} disabled={!folderData}>
-          {segmentationMode
-            ? 'Go to Segmentation'
-            : classificationMode
-              ? 'Go to Classification'
-              : 'Go to Detection'}
-        </button>
       </div>
     </div>
   );

@@ -18,7 +18,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const tasksFilePath = path.join(__dirname, 'tasks.csv');
 // Modify the tasks.csv header in server.js
 if (!fs.existsSync(tasksFilePath)) {
-  fs.writeFileSync(tasksFilePath, 'task_id,user_id,task_name,folder_path,task_type,created_at\n');
+  fs.writeFileSync(tasksFilePath, 'task_id,user_id,task_name,folder_path,task_type,label_classes,created_at\n');
 }
 
 // Multer storage configuration
@@ -67,12 +67,15 @@ app.post('/api/upload', upload.array('files'), (req, res) => {
 // Update the task creation endpoint
 app.post('/api/tasks', (req, res) => {
   try {
-    const { userId, taskName, folderId, taskType } = req.body;
+    const { userId, taskName, folderId, taskType, labelClasses } = req.body;
     const taskId = uuidv4();
     const folderPath = path.join('uploads', folderId);
     const createdAt = new Date().toISOString();
 
-    const taskLine = `${taskId},${userId},${taskName},${folderPath},${taskType},${createdAt}\n`;
+    // Stringify and escape the label classes to store in CSV
+    const escapedLabelClasses = JSON.stringify(labelClasses).replace(/,/g, '|');
+
+    const taskLine = `${taskId},${userId},${taskName},${folderPath},${taskType},${escapedLabelClasses},${createdAt}\n`;
 
     fs.appendFileSync(tasksFilePath, taskLine);
 
@@ -97,8 +100,8 @@ app.get('/api/tasks/:userId', (req, res) => {
       .split('\n')
       .slice(1) // Skip header row
       .map(line => {
-        const [task_id, user_id, task_name, folder_path, created_at] = line.split(',');
-        return { task_id, user_id, task_name, folder_path, created_at };
+        const [task_id, user_id, task_name, folder_path, task_type, label_classes, created_at] = line.split(',');
+        return { task_id, user_id, task_name, folder_path, task_type, label_classes: JSON.parse(label_classes.replace(/\|/g, ',')), created_at };
       })
       .filter(task => task.user_id === userId);
 
@@ -121,19 +124,35 @@ app.get('/api/tasks/:userId', (req, res) => {
 });
 
 // Add this new endpoint in server.js
+// Fix the endpoint in server.js
 app.get('/api/tasks/:taskId/files', (req, res) => {
   try {
     const { taskId } = req.params;
 
-    // Read tasks.csv to get the folder path
+    // Read tasks.csv to get the folder path and label classes
     const tasksContent = fs.readFileSync(tasksFilePath, 'utf8');
     const tasks = tasksContent
       .trim()
       .split('\n')
       .slice(1)
       .map(line => {
-        const [task_id, user_id, task_name, folder_path, task_type, created_at] = line.split(',');
-        return { task_id, folder_path };
+        const parts = line.split(',');
+        // Handle case where there might not be a label_classes field
+        const task_id = parts[0];
+        const folder_path = parts[3];
+        let label_classes = [];
+
+        // Check if there's a label_classes field (position 5)
+        if (parts.length > 5 && parts[5]) {
+          try {
+            label_classes = JSON.parse(parts[5].replace(/\|/g, ','));
+          } catch (e) {
+            console.error('Error parsing label classes:', e);
+            label_classes = [];
+          }
+        }
+
+        return { task_id, folder_path, label_classes };
       });
 
     const task = tasks.find(t => t.task_id === taskId);
@@ -152,20 +171,60 @@ app.get('/api/tasks/:taskId/files', (req, res) => {
 
     // Get annotations if they exist
     let annotations = {};
+    let taskLabelClasses = task.label_classes || [];
     const annotationsPath = path.join(folderPath, 'annotations.json');
     if (fs.existsSync(annotationsPath)) {
       const annotationsContent = fs.readFileSync(annotationsPath, 'utf8');
-      annotations = JSON.parse(annotationsContent);
+      const parsedAnnotations = JSON.parse(annotationsContent);
+      annotations = parsedAnnotations.annotations || {};
+
+      // If the annotations file has label classes, use those (they may be more up-to-date)
+      if (parsedAnnotations.labelClasses && parsedAnnotations.labelClasses.length > 0) {
+        taskLabelClasses = parsedAnnotations.labelClasses;
+      }
     }
 
     res.json({
       files,
-      annotations: annotations.annotations || {},
-      labelClasses: annotations.labelClasses || []
+      annotations,
+      labelClasses: taskLabelClasses
     });
   } catch (error) {
     console.error('Error getting task files:', error);
     res.status(500).json({ error: 'Failed to get task files' });
+  }
+});
+
+// Add this endpoint to server.js
+app.put('/api/tasks/:taskId/labels', (req, res) => {
+  try {
+    const { taskId } = req.params;
+    const { labelClasses } = req.body;
+
+    // Read the current CSV content
+    const tasksContent = fs.readFileSync(tasksFilePath, 'utf8');
+    const lines = tasksContent.trim().split('\n');
+
+    // Find and update the specific task line
+    const updatedLines = lines.map(line => {
+      const [currentTaskId, ...otherFields] = line.split(',');
+      if (currentTaskId === taskId) {
+        // Preserve all fields except label_classes which is the 6th field (index 5)
+        const fields = [currentTaskId, ...otherFields];
+        const escapedLabelClasses = JSON.stringify(labelClasses).replace(/,/g, '|');
+        fields[5] = escapedLabelClasses;
+        return fields.join(',');
+      }
+      return line;
+    });
+
+    // Write back to the CSV file
+    fs.writeFileSync(tasksFilePath, updatedLines.join('\n') + '\n');
+
+    res.json({ message: 'Labels updated successfully' });
+  } catch (error) {
+    console.error('Error updating labels:', error);
+    res.status(500).json({ error: 'Failed to update labels' });
   }
 });
 

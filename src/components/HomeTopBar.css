@@ -156,3 +156,29 @@
 .dropdown-item:not(:last-child) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+.annotation-menu {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.task-name {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1rem;
+    padding: 8px 16px;
+    background: rgba(74, 144, 226, 0.1);
+    border-radius: 20px;
+}
+
+/* Add responsive styles */
+@media (max-width: 768px) {
+    .annotation-menu {
+        gap: 1rem;
+    }
+
+    .task-name {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+    }
+}

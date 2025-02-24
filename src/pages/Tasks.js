@@ -40,10 +40,22 @@ function Tasks() {
             }
             const { files, annotations, labelClasses } = await filesResponse.json();
 
+            // Ensure we have label classes, even if they're empty
+            const validLabelClasses = labelClasses || [];
+
+            // If there are no label classes but we need them for this task type, show a warning
+            if (validLabelClasses.length === 0 &&
+                (task.task_type === 'detection' ||
+                    task.task_type === 'segmentation' ||
+                    task.task_type === 'classification')) {
+                console.warn('No label classes found for this task. You may need to add labels.');
+            }
+
             const folderInfo = {
+                taskId: task.task_id,
                 folderId: task.folder_path.split('/').pop(),
                 taskName: task.task_name,
-                labelClasses: labelClasses,
+                labelClasses: validLabelClasses,
                 files: files,
                 annotations: annotations  // Add this
             };
