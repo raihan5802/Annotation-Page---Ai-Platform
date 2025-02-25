@@ -92,12 +92,41 @@ const CenterIcon = () => (
     </svg>
 );
 
+const AddImageIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+        <line x1="12" y1="9" x2="12" y2="15" />
+        <line x1="9" y1="12" x2="15" y2="12" />
+    </svg>
+);
+
+const DeleteImageIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+        <line x1="9" y1="9" x2="15" y2="15" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+    </svg>
+);
+
 export default function Segmentation() {
     const navigate = useNavigate();
     const { state } = useLocation();
     const folderInfo = state?.folderInfo;
     const canvasHelperRef = useRef(null);
     const canvasAreaRef = useRef(null);
+
+    // Added refs and state variables
+    const fileInputRef = useRef(null); // Reference for hidden file input
+    const [filesList, setFilesList] = useState(() => {
+        return folderInfo?.files || []; // Fixed initialization to avoid reference error
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
 
     if (!folderInfo) {
         return (
@@ -142,7 +171,7 @@ export default function Segmentation() {
     const [localLabelClasses, setLocalLabelClasses] = useState(labelClasses);
 
     const [scale, setScale] = useState(1.0);
-    const currentFileUrl = files[currentIndex]?.url;
+    const currentFileUrl = filesList[currentIndex]?.url;
     const currentShapes = annotations[currentFileUrl] || [];
 
     // New state for points‐limit modal for polygon & segmentation tools
@@ -179,16 +208,14 @@ export default function Segmentation() {
             showHelper('Move and select objects (M)');
         } else if (selectedTool === 'polygon') {
             showHelper('Click to add points. Double-click to complete polygon (P)');
-        } else if (selectedTool === 'segmentation') {
-            if (segmentationType === 'instance') {
-                showHelper('Draw instance segmentation polygon (S)');
-            } else if (segmentationType === 'semantic') {
-                showHelper('Draw semantic segmentation polygon (S)');
-            } else if (segmentationType === 'panoptic') {
-                showHelper(`Draw ${panopticOption} segmentation polygon (S)`);
-            }
+        } else if (selectedTool === 'instance') {
+            showHelper('Draw instance segmentation polygon (I)');
+        } else if (selectedTool === 'semantic') {
+            showHelper('Draw semantic segmentation polygon (S)');
+        } else if (selectedTool === 'panoptic') {
+            showHelper(`Draw panoptic ${panopticOption} segmentation polygon (A)`);
         }
-    }, [selectedTool, segmentationType, panopticOption]);
+    }, [selectedTool, panopticOption]);
 
     // Calculate canvas dimensions
     useEffect(() => {
@@ -404,8 +431,12 @@ export default function Segmentation() {
                 setSelectedTool('move');
             } else if (key === 'p' || key === 'P') {
                 handleToolChange('polygon');
+            } else if (key === 'i' || key === 'I') {
+                handleToolChange('instance');
             } else if (key === 's' || key === 'S') {
-                handleToolChange('segmentation');
+                handleToolChange('semantic');
+            } else if (key === 'a' || key === 'A') {
+                handleToolChange('panoptic');
             } else if ((key === 's' || key === 'S') && e.ctrlKey) {
                 e.preventDefault();
                 handleSave();
@@ -450,7 +481,7 @@ export default function Segmentation() {
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [annotations, undoStack, redoStack, selectedAnnotationIndex]);
+    }, [annotations, undoStack, redoStack, selectedAnnotationIndex, panopticOption]);
 
 
     // -------------- Add Label Modal --------------
@@ -595,7 +626,7 @@ export default function Segmentation() {
 
     // Function to handle tool changes for polygon and segmentation
     const handleToolChange = (tool) => {
-        if (tool === 'polygon' || tool === 'segmentation') {
+        if (tool === 'polygon' || tool === 'instance' || tool === 'semantic' || tool === 'panoptic') {
             setPendingTool(tool);
             setShowPointsLimitModal(true);
         } else {
@@ -608,8 +639,130 @@ export default function Segmentation() {
         (l) => l.name === selectedLabelClass
     )?.color || '#ff0000';
 
+    // Add image handler function
+    const handleAddImage = () => {
+        fileInputRef.current.click();
+    };
+
+    const handleFileSelect = async (e) => {
+        const selectedFiles = e.target.files;
+        if (!selectedFiles || selectedFiles.length === 0) return;
+
+        setIsUploading(true);
+        showHelper('Uploading image(s)...');
+
+        const formData = new FormData();
+        for (let i = 0; i < selectedFiles.length; i++) {
+            formData.append('files', selectedFiles[i]);
+        }
+
+        console.log("Uploading to folder:", folderId);
+
+        try {
+            const response = await fetch(`http://localhost:4000/api/images/${folderId}`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload images');
+            }
+
+            const result = await response.json();
+            console.log("Upload result:", result);
+
+            // Update files list with newly uploaded files
+            const updatedFilesList = [...filesList, ...result.files];
+            setFilesList(updatedFilesList);
+
+            // Navigate to the first new image if any were uploaded
+            if (result.files.length > 0) {
+                setCurrentIndex(filesList.length); // This will show the first new image
+            }
+
+            showHelper(`Successfully uploaded ${result.files.length} image(s)`);
+        } catch (error) {
+            console.error('Error uploading images:', error);
+            showHelper('Error uploading image(s)');
+        } finally {
+            setIsUploading(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    // Delete image handler function
+    const handleDeleteImage = () => {
+        if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) {
+            showHelper('No image to delete');
+            return;
+        }
+
+        setShowConfirmDeleteModal(true);
+    };
+
+    const confirmDeleteImage = async () => {
+        if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) return;
+
+        const currentFile = filesList[currentIndex];
+        setIsDeleting(true);
+
+        try {
+            // Extract filename from URL
+            // URL format is typically: http://localhost:4000/uploads/FOLDER_ID/FILENAME
+            const urlParts = currentFile.url.split('/');
+            const filename = urlParts[urlParts.length - 1];
+
+            const response = await fetch(`http://localhost:4000/api/images/${folderId}/${filename}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete image');
+            }
+
+            // Remove deleted file from the list
+            const updatedFiles = [...filesList];
+            updatedFiles.splice(currentIndex, 1);
+
+            // Remove annotations for this file
+            const updatedAnnotations = { ...annotations };
+            delete updatedAnnotations[currentFile.url];
+
+            // Update state
+            setFilesList(updatedFiles);
+            setAnnotations(updatedAnnotations);
+
+            // Adjust current index if needed
+            if (currentIndex >= updatedFiles.length && updatedFiles.length > 0) {
+                setCurrentIndex(updatedFiles.length - 1);
+            } else if (updatedFiles.length === 0) {
+                // Handle case when all images are deleted
+                setCurrentIndex(0);
+            }
+
+            showHelper('Image deleted successfully');
+        } catch (error) {
+            console.error('Error deleting image:', error);
+            showHelper('Error deleting image');
+        } finally {
+            setIsDeleting(false);
+            setShowConfirmDeleteModal(false);
+        }
+    };
+
     return (
         <div className="annotate-container">
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+                accept="image/*"
+                multiple
+            />
             <HomeTopBar
                 taskName={taskName}
                 showControls={true}
@@ -640,6 +793,12 @@ export default function Segmentation() {
                 <button onClick={handleNext} disabled={currentIndex >= files.length - 1}>
                     Next
                 </button>
+                <button onClick={handleAddImage} disabled={isUploading} title="Add Image">
+                    <AddImageIcon /> Add Image
+                </button>
+                <button onClick={handleDeleteImage} disabled={isDeleting || filesList.length === 0} title="Delete Current Image">
+                    <DeleteImageIcon /> Delete Image
+                </button>
                 <button onClick={() => setShowShortcuts(true)}>
                     Keyboard Shortcuts
                 </button>
@@ -648,7 +807,7 @@ export default function Segmentation() {
                 <button onClick={handleZoomIn}>+ Zoom</button>
                 <button onClick={() => { }}>Export</button>
                 <span className="img-count">
-                    {currentIndex + 1} / {files.length}
+                    {currentIndex + 1} / {filesList.length}
                 </span>
             </div>
 
@@ -676,82 +835,70 @@ export default function Segmentation() {
                                 <div className="tool-name">Polygon</div>
                                 <div className="keyboard-hint">P</div>
                             </div>
-                            <div
-                                className={`tool-button ${selectedTool === 'segmentation' ? 'active' : ''}`}
-                                onClick={() => handleToolChange('segmentation')}
-                                title="Segmentation Tool (S)"
-                            >
-                                <div className="tool-icon"><SegmentationIcon /></div>
-                                <div className="tool-name">Segment</div>
-                                <div className="keyboard-hint">S</div>
+                        </div>
+
+                        {/* Segmentation section with heading */}
+                        <div className="segmentation-section">
+                            <h4 className="segmentation-heading">Segmentation</h4>
+
+                            {/* Segmentation tools in their own grid below the heading */}
+                            <div className="tool-grid">
+                                <div
+                                    className={`tool-button ${selectedTool === 'instance' ? 'active' : ''}`}
+                                    onClick={() => handleToolChange('instance')}
+                                    title="Instance Segmentation Tool (I)"
+                                >
+                                    <div className="tool-icon"><SegmentationIcon /></div>
+                                    <div className="tool-name">Instance</div>
+                                    <div className="keyboard-hint">I</div>
+                                </div>
+                                <div
+                                    className={`tool-button ${selectedTool === 'semantic' ? 'active' : ''}`}
+                                    onClick={() => handleToolChange('semantic')}
+                                    title="Semantic Segmentation Tool (S)"
+                                >
+                                    <div className="tool-icon"><SegmentationIcon /></div>
+                                    <div className="tool-name">Semantic</div>
+                                    <div className="keyboard-hint">S</div>
+                                </div>
+                                <div
+                                    className={`tool-button ${selectedTool === 'panoptic' ? 'active' : ''}`}
+                                    onClick={() => handleToolChange('panoptic')}
+                                    title="Panoptic Segmentation Tool (A)"
+                                >
+                                    <div className="tool-icon"><SegmentationIcon /></div>
+                                    <div className="tool-name">Panoptic</div>
+                                    <div className="keyboard-hint">A</div>
+                                </div>
                             </div>
                         </div>
 
-                        {selectedTool === 'segmentation' && (
-                            <div className="segmentation-options">
-                                <div className="option-section">
-                                    <h4>Segmentation Type</h4>
-                                    <div className="radio-group">
-                                        <label className="radio-button">
-                                            <input
-                                                type="radio"
-                                                name="segmentationType"
-                                                value="instance"
-                                                checked={segmentationType === 'instance'}
-                                                onChange={() => setSegmentationType('instance')}
-                                            />
-                                            <span className="radio-label">Instance</span>
-                                        </label>
-                                        <label className="radio-button">
-                                            <input
-                                                type="radio"
-                                                name="segmentationType"
-                                                value="semantic"
-                                                checked={segmentationType === 'semantic'}
-                                                onChange={() => setSegmentationType('semantic')}
-                                            />
-                                            <span className="radio-label">Semantic</span>
-                                        </label>
-                                        <label className="radio-button">
-                                            <input
-                                                type="radio"
-                                                name="segmentationType"
-                                                value="panoptic"
-                                                checked={segmentationType === 'panoptic'}
-                                                onChange={() => setSegmentationType('panoptic')}
-                                            />
-                                            <span className="radio-label">Panoptic</span>
-                                        </label>
-                                    </div>
+                        {/* Only show panoptic options when panoptic is selected */}
+                        {selectedTool === 'panoptic' && (
+                            <div className="option-section">
+                                <h4>Panoptic Option</h4>
+                                <div className="radio-group">
+                                    <label className="radio-button">
+                                        <input
+                                            type="radio"
+                                            name="panopticOption"
+                                            value="instance"
+                                            checked={panopticOption === 'instance'}
+                                            onChange={() => setPanopticOption('instance')}
+                                        />
+                                        <span className="radio-label">Instance</span>
+                                    </label>
+                                    <label className="radio-button">
+                                        <input
+                                            type="radio"
+                                            name="panopticOption"
+                                            value="semantic"
+                                            checked={panopticOption === 'semantic'}
+                                            onChange={() => setPanopticOption('semantic')}
+                                        />
+                                        <span className="radio-label">Semantic</span>
+                                    </label>
                                 </div>
-
-                                {segmentationType === 'panoptic' && (
-                                    <div className="option-section">
-                                        <h4>Panoptic Option</h4>
-                                        <div className="radio-group">
-                                            <label className="radio-button">
-                                                <input
-                                                    type="radio"
-                                                    name="panopticOption"
-                                                    value="instance"
-                                                    checked={panopticOption === 'instance'}
-                                                    onChange={() => setPanopticOption('instance')}
-                                                />
-                                                <span className="radio-label">Instance</span>
-                                            </label>
-                                            <label className="radio-button">
-                                                <input
-                                                    type="radio"
-                                                    name="panopticOption"
-                                                    value="semantic"
-                                                    checked={panopticOption === 'semantic'}
-                                                    onChange={() => setPanopticOption('semantic')}
-                                                />
-                                                <span className="radio-label">Semantic</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         )}
                     </div>
@@ -877,7 +1024,13 @@ export default function Segmentation() {
                 <div className="modal-backdrop">
                     <div className="modal">
                         <h3>
-                            {pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1)} Annotation Points Limit
+                            {(() => {
+                                if (pendingTool === 'polygon') return 'Polygon';
+                                if (pendingTool === 'instance') return 'Instance';
+                                if (pendingTool === 'semantic') return 'Semantic';
+                                if (pendingTool === 'panoptic') return 'Panoptic';
+                                return pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1);
+                            })()} Annotation Points Limit
                         </h3>
                         <div>
                             <input
@@ -907,6 +1060,24 @@ export default function Segmentation() {
                                     setPointsLimitInput('');
                                 }}
                             >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation modal for deleting images */}
+            {showConfirmDeleteModal && (
+                <div className="modal-backdrop">
+                    <div className="modal">
+                        <h3>Confirm Delete</h3>
+                        <p>Are you sure you want to delete this image? This action cannot be undone.</p>
+                        <div className="modal-footer">
+                            <button onClick={confirmDeleteImage} className="primary" disabled={isDeleting}>
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                            <button onClick={() => setShowConfirmDeleteModal(false)} className="secondary">
                                 Cancel
                             </button>
                         </div>

@@ -445,3 +445,32 @@
         grid-template-columns: repeat(3, 1fr);
     }
 }
+
+.segmentation-heading {
+    color: white;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.segmentation-heading::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4v7l9 9 7-7-9-9z" /><path d="M20 20L9 9" /></svg>');
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.segmentation-section {
+    margin-top: 16px;
+}
+
+.segmentation-section .segmentation-heading {
+    margin-bottom: 12px;
+}

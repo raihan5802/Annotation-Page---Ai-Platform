@@ -449,33 +449,21 @@ export default function SegmentationCanvas({
         // Double-click logic for finalizing shape
         const now = Date.now();
         const delta = now - lastClickTimeRef.current;
-        const usesDoubleClick =
-            selectedTool === 'polygon' ||
-            (selectedTool === 'segmentation' &&
-                (segmentationType === 'instance' ||
-                    segmentationType === 'semantic' ||
-                    segmentationType === 'panoptic'));
+        const usesDoubleClick = ['polygon', 'instance', 'semantic', 'panoptic'].includes(selectedTool);
+
         if (usesDoubleClick && delta < doubleClickThreshold) {
             return; // double-click => handled in handleDblClick
         }
         lastClickTimeRef.current = now;
 
+        // Add points based on selected tool
         if (selectedTool === 'polygon') {
             addPolygonPoint(pos);
-        } else if (
-            selectedTool === 'segmentation' &&
-            segmentationType === 'instance'
-        ) {
+        } else if (selectedTool === 'instance') {
             addInstancePolygonPoint(pos);
-        } else if (
-            selectedTool === 'segmentation' &&
-            segmentationType === 'semantic'
-        ) {
+        } else if (selectedTool === 'semantic') {
             addSemanticPolygonPoint(pos);
-        } else if (
-            selectedTool === 'segmentation' &&
-            segmentationType === 'panoptic'
-        ) {
+        } else if (selectedTool === 'panoptic') {
             if (panopticOption === 'instance') {
                 addInstancePolygonPoint(pos);
             } else if (panopticOption === 'semantic') {
@@ -495,22 +483,11 @@ export default function SegmentationCanvas({
     function handleDblClick() {
         if (selectedTool === 'polygon' && drawingPolygon) {
             finalizePolygon();
-        } else if (
-            selectedTool === 'segmentation' &&
-            segmentationType === 'instance' &&
-            drawingInstancePolygon
-        ) {
+        } else if (selectedTool === 'instance' && drawingInstancePolygon) {
             finalizeInstancePolygon();
-        } else if (
-            selectedTool === 'segmentation' &&
-            segmentationType === 'semantic' &&
-            drawingSemanticPolygon
-        ) {
+        } else if (selectedTool === 'semantic' && drawingSemanticPolygon) {
             finalizeSemanticPolygon();
-        } else if (
-            selectedTool === 'segmentation' &&
-            segmentationType === 'panoptic'
-        ) {
+        } else if (selectedTool === 'panoptic') {
             if (panopticOption === 'instance' && drawingInstancePolygon) {
                 finalizeInstancePolygon();
             } else if (panopticOption === 'semantic' && drawingSemanticPolygon) {
@@ -948,71 +925,67 @@ export default function SegmentationCanvas({
                         )}
 
                         {/* In-progress Instance Segmentation Polygon */}
-                        {drawingInstancePolygon &&
-                            selectedTool === 'segmentation' &&
-                            segmentationType === 'instance' && (
-                                <>
-                                    {tempInstancePoints.length > 1 && (
-                                        <Line
-                                            points={flattenPoints([
-                                                ...tempInstancePoints,
-                                                tempInstancePoints[0],
-                                            ])}
-                                            fill={activeLabelColor + '55'}
-                                            stroke={activeLabelColor}
-                                            strokeWidth={2 / scale}
-                                            closed
-                                        />
-                                    )}
-                                    {tempInstancePoints.map((pt, idx) => (
-                                        <Circle
-                                            key={idx}
-                                            x={pt.x}
-                                            y={pt.y}
-                                            radius={4 / scale}
-                                            fill="#fff"
-                                            stroke={activeLabelColor}
-                                            strokeWidth={1 / scale}
-                                        />
-                                    ))}
-                                </>
-                            )}
+                        {drawingInstancePolygon && selectedTool === 'instance' && (
+                            <>
+                                {tempInstancePoints.length > 1 && (
+                                    <Line
+                                        points={flattenPoints([
+                                            ...tempInstancePoints,
+                                            tempInstancePoints[0],
+                                        ])}
+                                        fill={activeLabelColor + '55'}
+                                        stroke={activeLabelColor}
+                                        strokeWidth={2 / scale}
+                                        closed
+                                    />
+                                )}
+                                {tempInstancePoints.map((pt, idx) => (
+                                    <Circle
+                                        key={idx}
+                                        x={pt.x}
+                                        y={pt.y}
+                                        radius={4 / scale}
+                                        fill="#fff"
+                                        stroke={activeLabelColor}
+                                        strokeWidth={1 / scale}
+                                    />
+                                ))}
+                            </>
+                        )}
 
                         {/* In-progress Semantic Segmentation Polygon */}
-                        {drawingSemanticPolygon &&
-                            selectedTool === 'segmentation' &&
-                            segmentationType === 'semantic' && (
-                                <>
-                                    {tempSemanticPoints.length > 1 && (
-                                        <Line
-                                            points={flattenPoints([
-                                                ...tempSemanticPoints,
-                                                tempSemanticPoints[0],
-                                            ])}
-                                            fill={activeLabelColor + '55'}
-                                            stroke={activeLabelColor}
-                                            strokeWidth={2 / scale}
-                                            closed
-                                        />
-                                    )}
-                                    {tempSemanticPoints.map((pt, idx) => (
-                                        <Circle
-                                            key={idx}
-                                            x={pt.x}
-                                            y={pt.y}
-                                            radius={4 / scale}
-                                            fill="#fff"
-                                            stroke={activeLabelColor}
-                                            strokeWidth={1 / scale}
-                                        />
-                                    ))}
-                                </>
-                            )}
+                        {drawingSemanticPolygon && selectedTool === 'semantic' && (
+                            <>
+                                {tempSemanticPoints.length > 1 && (
+                                    <Line
+                                        points={flattenPoints([
+                                            ...tempSemanticPoints,
+                                            tempSemanticPoints[0],
+                                        ])}
+                                        fill={activeLabelColor + '55'}
+                                        stroke={activeLabelColor}
+                                        strokeWidth={2 / scale}
+                                        closed
+                                    />
+                                )}
+                                {tempSemanticPoints.map((pt, idx) => (
+                                    <Circle
+                                        key={idx}
+                                        x={pt.x}
+                                        y={pt.y}
+                                        radius={4 / scale}
+                                        fill="#fff"
+                                        stroke={activeLabelColor}
+                                        strokeWidth={1 / scale}
+                                    />
+                                ))}
+                            </>
+                        )}
 
                         {/* In-progress Panoptic Polygon for Instance */}
                         {drawingInstancePolygon &&
-                            selectedTool === 'segmentation' &&
-                            segmentationType === 'panoptic' &&
+                            selectedTool === 'panoptic' &&
+                            // segmentationType === 'panoptic' &&
                             panopticOption === 'instance' && (
                                 <>
                                     {tempInstancePoints.length > 1 && (
@@ -1043,8 +1016,8 @@ export default function SegmentationCanvas({
 
                         {/* In-progress Panoptic Polygon for Semantic */}
                         {drawingSemanticPolygon &&
-                            selectedTool === 'segmentation' &&
-                            segmentationType === 'panoptic' &&
+                            selectedTool === 'panoptic' &&
+                            //segmentationType === 'panoptic' &&
                             panopticOption === 'semantic' && (
                                 <>
                                     {tempSemanticPoints.length > 1 && (

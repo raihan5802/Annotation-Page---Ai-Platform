@@ -27,7 +27,7 @@ const storage = multer.diskStorage({
     let folderId = req.params.folderId || req.body.folderId;
     if (!folderId) {
       folderId = uuidv4();
-      // req.body.folderId = folderId;
+      req.body.folderId = folderId;
     }
     const uploadPath = path.join(__dirname, 'uploads', folderId);
     fs.mkdirSync(uploadPath, { recursive: true });
@@ -330,7 +330,6 @@ app.delete('/api/images/:folderId/:filename', (req, res) => {
 // Add images to existing folder endpoint
 const addImagesUpload = multer({ storage }).array('files');
 app.post('/api/images/:folderId', (req, res) => {
-  req.body.folderId = req.params.folderId; // Set folderId in request body
   addImagesUpload(req, res, (err) => {
     if (err) {
       return res.status(500).json({ error: 'Failed to upload files' });
