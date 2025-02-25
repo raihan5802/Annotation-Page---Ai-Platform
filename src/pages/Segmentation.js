@@ -183,6 +183,16 @@ export default function Segmentation() {
     // State for selected annotation for opacity control
     const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
 
+    const handleUpdateAllAnnotations = (updatedAnnotations) => {
+        const updated = {
+            ...annotations,
+            [currentFileUrl]: updatedAnnotations,
+        };
+        setUndoStack([...undoStack, annotations]);
+        setRedoStack([]);
+        setAnnotations(updated);
+    };
+
     // Whenever shapes change, store old state in undoStack
     const handleAnnotationsChange = (newShapes) => {
         const updated = {
@@ -974,6 +984,7 @@ export default function Segmentation() {
                     selectedAnnotationIndex={selectedAnnotationIndex}
                     setSelectedAnnotationIndex={setSelectedAnnotationIndex}
                     currentShapes={currentShapes}
+                    onUpdateAllAnnotations={handleUpdateAllAnnotations}
                 />
             </div>
 

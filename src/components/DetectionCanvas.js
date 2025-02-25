@@ -561,7 +561,7 @@ export default function DetectionCanvas({
       ...newBox,
       label: activeLabel,
       color: activeLabelColor,
-      opacity: 1.0, // Default opacity
+      opacity: 0.55, // Default opacity
     };
 
     if (konvaImg) {
@@ -599,7 +599,7 @@ export default function DetectionCanvas({
         points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
-        opacity: 1.0, // Default opacity
+        opacity: 0.55, // Default opacity
       };
       if (konvaImg) {
         const clipped = clipAnnotationToBoundary(
@@ -638,7 +638,7 @@ export default function DetectionCanvas({
         points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
-        opacity: 1.0, // Default opacity
+        opacity: 0.55, // Default opacity
       };
       if (konvaImg) {
         const clipped = clipAnnotationToBoundary(
@@ -677,7 +677,7 @@ export default function DetectionCanvas({
         points: pointsToUse,
         label: activeLabel,
         color: activeLabelColor,
-        opacity: 1.0, // Default opacity
+        opacity: 0.55, // Default opacity
       };
       if (konvaImg) {
         const clipped = clipAnnotationToBoundary(
@@ -708,7 +708,7 @@ export default function DetectionCanvas({
       rotation: 0,
       label: activeLabel,
       color: activeLabelColor,
-      opacity: 1.0, // Default opacity
+      opacity: 0.55, // Default opacity
     });
   }
   function updateEllipse(pos) {
@@ -1385,10 +1385,10 @@ export default function DetectionCanvas({
                       y={ann.y}
                       width={ann.width}
                       height={ann.height}
-                      fill={fillColor}
+                      fill={annColor}
                       stroke={annColor}
                       strokeWidth={2 / scale}
-                      opacity={opacity}
+                      opacity={ann.opacity !== undefined ? ann.opacity : 1.0}
                       draggable
                       onMouseDown={(e) => (e.cancelBubble = true)}
                       onDragStart={(e) => (e.cancelBubble = true)}
@@ -1425,7 +1425,7 @@ export default function DetectionCanvas({
                       radiusX={ann.radiusX}
                       radiusY={ann.radiusY}
                       rotation={ann.rotation || 0}
-                      fill={fillColor}
+                      fill={annColor}
                       stroke={annColor}
                       strokeWidth={2 / scale}
                       opacity={opacity}
@@ -1462,7 +1462,7 @@ export default function DetectionCanvas({
                       x={ann.x}
                       y={ann.y}
                       radius={6 / scale}
-                      fill={annColor}
+                      fill="#fff"
                       opacity={opacity}
                       draggable
                       onMouseDown={(e) => (e.cancelBubble = true)}
@@ -1582,7 +1582,7 @@ export default function DetectionCanvas({
                       >
                         <Path
                           data={pathData}
-                          fill={fillColor}
+                          fill={annColor}
                           stroke={annColor}
                           strokeWidth={2 / scale}
                           fillRule="evenodd"
@@ -1647,7 +1647,7 @@ export default function DetectionCanvas({
                       >
                         <Line
                           points={pts}
-                          fill={fillColor}
+                          fill={annColor}
                           stroke={annColor}
                           strokeWidth={2 / scale}
                           closed

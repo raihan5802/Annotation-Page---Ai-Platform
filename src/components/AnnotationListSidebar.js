@@ -20,9 +20,10 @@ export default function AnnotationListSidebar({
   selectedAnnotationIndex,
   setSelectedAnnotationIndex,
   currentShapes,
+  onUpdateAllAnnotations,
 }) {
   // State for global opacity value
-  const [globalOpacityValue, setGlobalOpacityValue] = useState(100);
+  const [globalOpacityValue, setGlobalOpacityValue] = useState(55);
 
   // Handle label dropdown changes for a specific annotation
   const handleLabelDropdown = (idx, newLabel) => {
@@ -50,16 +51,12 @@ export default function AnnotationListSidebar({
       // Update only the selected annotation
       onUpdateAnnotation(selectedAnnotationIndex, { opacity: decimal });
     } else {
-      // Update all annotations
-      // Important: Create a batch of updates to apply simultaneously
-      const updatedAnnotations = annotations.map((ann, index) => {
-        return { ...ann, opacity: decimal };
-      });
-
-      // Apply all updates at once to avoid overwriting
-      updatedAnnotations.forEach((updatedAnn, index) => {
-        onUpdateAnnotation(index, { opacity: decimal });
-      });
+      // Update all annotations at once
+      const updatedAnnotations = annotations.map((ann) => ({
+        ...ann,
+        opacity: decimal,
+      }));
+      onUpdateAllAnnotations(updatedAnnotations);
     }
   };
 
@@ -68,18 +65,16 @@ export default function AnnotationListSidebar({
     if (selectedAnnotationIndex !== null && currentShapes[selectedAnnotationIndex]) {
       const currentOpacity = currentShapes[selectedAnnotationIndex].opacity !== undefined
         ? Math.round(currentShapes[selectedAnnotationIndex].opacity * 100)
-        : 100;
+        : 55; // Use 55 as fallback if opacity is undefined
       setGlobalOpacityValue(currentOpacity);
     } else {
       // If no annotation is selected, check if all annotations have the same opacity
       if (annotations.length > 0) {
-        const opacities = annotations.map(ann => ann.opacity !== undefined ? Math.round(ann.opacity * 100) : 100);
-
-        // If all annotations have the same opacity, use that value; otherwise use 100%
+        const opacities = annotations.map(ann => ann.opacity !== undefined ? Math.round(ann.opacity * 100) : 55);
         const allSame = opacities.every(opacity => opacity === opacities[0]);
-        setGlobalOpacityValue(allSame ? opacities[0] : 100);
+        setGlobalOpacityValue(allSame ? opacities[0] : 55);
       } else {
-        setGlobalOpacityValue(100);
+        setGlobalOpacityValue(55);
       }
     }
   }, [selectedAnnotationIndex, currentShapes, annotations]);

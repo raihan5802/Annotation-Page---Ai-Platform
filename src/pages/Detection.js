@@ -212,6 +212,16 @@ export default function Detection() {
     setAnnotations(updated);
   };
 
+  const handleUpdateAllAnnotations = (updatedAnnotations) => {
+    const updated = {
+      ...annotations,
+      [currentFileUrl]: updatedAnnotations,
+    };
+    setUndoStack([...undoStack, annotations]);
+    setRedoStack([]);
+    setAnnotations(updated);
+  };
+
   // useEffect to reset selection on image change
   useEffect(() => {
     // Reset selectedAnnotationIndex when changing images
@@ -994,6 +1004,7 @@ export default function Detection() {
           selectedAnnotationIndex={selectedAnnotationIndex}
           setSelectedAnnotationIndex={setSelectedAnnotationIndex}
           currentShapes={currentShapes}
+          onUpdateAllAnnotations={handleUpdateAllAnnotations}
         />
       </div>
 

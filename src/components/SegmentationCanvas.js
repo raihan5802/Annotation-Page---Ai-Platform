@@ -276,7 +276,7 @@ export default function SegmentationCanvas({
                 points: pointsToUse,
                 label: activeLabel,
                 color: activeLabelColor,
-                opacity: 1.0, // Default opacity
+                opacity: 0.55, // Default opacity
             };
             if (konvaImg) {
                 const clipped = clipAnnotationToBoundary(
@@ -314,7 +314,7 @@ export default function SegmentationCanvas({
                 type: 'polygon',
                 points: pointsToUse,
                 label: activeLabel,
-                opacity: 1.0, // Default opacity
+                opacity: 0.55, // Default opacity
             };
 
             // Compute new instance ID based on current annotations of this label.
@@ -363,7 +363,7 @@ export default function SegmentationCanvas({
                 points: pointsToUse,
                 label: activeLabel,
                 color: activeLabelColor,
-                opacity: 1.0, // Default opacity
+                opacity: 0.55, // Default opacity
             };
             if (konvaImg) {
                 const clipped = clipAnnotationToBoundary(newAnn, konvaImg.width, konvaImg.height);
@@ -1013,7 +1013,7 @@ export default function SegmentationCanvas({
                                             >
                                                 <Path
                                                     data={pathData}
-                                                    fill={fillColor}
+                                                    fill={annColor}
                                                     stroke={annColor}
                                                     strokeWidth={2 / scale}
                                                     fillRule="evenodd"
@@ -1102,7 +1102,7 @@ export default function SegmentationCanvas({
                                             >
                                                 <Line
                                                     points={pts}
-                                                    fill={fillColor}
+                                                    fill={annColor}
                                                     stroke={annColor}
                                                     strokeWidth={2 / scale}
                                                     opacity={opacity}
