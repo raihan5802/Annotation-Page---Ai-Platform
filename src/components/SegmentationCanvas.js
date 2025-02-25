@@ -85,6 +85,23 @@ export default function SegmentationCanvas({
     const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
     const [copiedAnnotation, setCopiedAnnotation] = useState(null);
 
+    // For Ctrl+Click dragging feature for automatic annotation
+    const [isDraggingWithCtrl, setIsDraggingWithCtrl] = useState(false);
+    const [lastDragPoint, setLastDragPoint] = useState(null);
+    const minDistanceBetweenPoints = 10; // Minimum pixel distance between points when dragging
+
+    // For point reduction panel
+    const [showPointReductionPanel, setShowPointReductionPanel] = useState(false);
+    const [currentAnnotationPoints, setCurrentAnnotationPoints] = useState([]);
+    const [currentAnnotationType, setCurrentAnnotationType] = useState('');
+    const [distanceThreshold, setDistanceThreshold] = useState(10); // Default threshold
+    const [originalPoints, setOriginalPoints] = useState([]); // Store original points for cancellation
+
+    const [previewPoints, setPreviewPoints] = useState([]);
+    const [isShowingReducedPreview, setIsShowingReducedPreview] = useState(false); // Track if showing preview
+
+
+
     //For icon-change during annotation
     const crosshairCursor = `url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="10" x2="50" y2="45" stroke="black" stroke-width="2"/><line x1="50" y1="55" x2="50" y2="90" stroke="black" stroke-width="2"/><line x1="10" y1="50" x2="45" y2="50" stroke="black" stroke-width="2"/><line x1="55" y1="50" x2="90" y2="50" stroke="black" stroke-width="2"/><circle cx="50" cy="50" r="1" fill="black"/></svg>') 50 50, crosshair`;
 
@@ -371,6 +388,8 @@ export default function SegmentationCanvas({
             setDrawingInstancePolygon(false);
             setTempSemanticPoints([]);
             setDrawingSemanticPolygon(false);
+            setIsDraggingWithCtrl(false);
+            setLastDragPoint(null);
         };
         window.addEventListener('cancel-annotation', onCancelAnnotation);
         return () =>
@@ -446,6 +465,31 @@ export default function SegmentationCanvas({
         const pos = getGroupPos(evt);
         if (!pos) return;
 
+        // Check if Ctrl key is pressed for continuous annotation
+        const isCtrlPressed = evt.evt.ctrlKey;
+
+        // For tools that support Ctrl+drag continuous annotation
+        if (isCtrlPressed && (selectedTool === 'polygon' || selectedTool === 'instance' || selectedTool === 'semantic' || selectedTool === 'panoptic')) {
+            setIsDraggingWithCtrl(true);
+            setLastDragPoint(pos);
+
+            // Add first point
+            if (selectedTool === 'polygon') {
+                addPolygonPoint(pos);
+            } else if (selectedTool === 'instance') {
+                addInstancePolygonPoint(pos);
+            } else if (selectedTool === 'semantic') {
+                addSemanticPolygonPoint(pos);
+            } else if (selectedTool === 'panoptic') {
+                if (panopticOption === 'instance') {
+                    addInstancePolygonPoint(pos);
+                } else if (panopticOption === 'semantic') {
+                    addSemanticPolygonPoint(pos);
+                }
+            }
+            return;
+        }
+
         // Double-click logic for finalizing shape
         const now = Date.now();
         const delta = now - lastClickTimeRef.current;
@@ -473,11 +517,251 @@ export default function SegmentationCanvas({
     }
 
     function handleMouseMove(evt) {
-        // No continuous drawing for polygon-based tools.
+        // Handle Ctrl+drag for continuous annotation
+        if (isDraggingWithCtrl) {
+            const pos = getGroupPos(evt);
+            if (!pos || !lastDragPoint) return;
+
+            // Only add new point if we've moved far enough from the last point
+            const distance = getDistance(lastDragPoint, pos);
+            if (distance >= minDistanceBetweenPoints) {
+                // Add a point based on the tool
+                if (selectedTool === 'polygon' && drawingPolygon) {
+                    // Check point limit before adding
+                    if (pointsLimit === 0 || tempPoints.length < pointsLimit) {
+                        addPolygonPoint(pos);
+                    } else if (tempPoints.length >= pointsLimit) {
+                        setIsDraggingWithCtrl(false);
+                        finalizePolygon();
+                        return;
+                    }
+                } else if (selectedTool === 'instance' && drawingInstancePolygon) {
+                    if (pointsLimit === 0 || tempInstancePoints.length < pointsLimit) {
+                        addInstancePolygonPoint(pos);
+                    } else if (tempInstancePoints.length >= pointsLimit) {
+                        setIsDraggingWithCtrl(false);
+                        finalizeInstancePolygon();
+                        return;
+                    }
+                } else if (selectedTool === 'semantic' && drawingSemanticPolygon) {
+                    if (pointsLimit === 0 || tempSemanticPoints.length < pointsLimit) {
+                        addSemanticPolygonPoint(pos);
+                    } else if (tempSemanticPoints.length >= pointsLimit) {
+                        setIsDraggingWithCtrl(false);
+                        finalizeSemanticPolygon();
+                        return;
+                    }
+                } else if (selectedTool === 'panoptic') {
+                    if (panopticOption === 'instance' && drawingInstancePolygon) {
+                        if (pointsLimit === 0 || tempInstancePoints.length < pointsLimit) {
+                            addInstancePolygonPoint(pos);
+                        } else if (tempInstancePoints.length >= pointsLimit) {
+                            setIsDraggingWithCtrl(false);
+                            finalizeInstancePolygon();
+                            return;
+                        }
+                    } else if (panopticOption === 'semantic' && drawingSemanticPolygon) {
+                        if (pointsLimit === 0 || tempSemanticPoints.length < pointsLimit) {
+                            addSemanticPolygonPoint(pos);
+                        } else if (tempSemanticPoints.length >= pointsLimit) {
+                            setIsDraggingWithCtrl(false);
+                            finalizeSemanticPolygon();
+                            return;
+                        }
+                    }
+                }
+
+                setLastDragPoint(pos);
+            }
+        }
+    }
+
+    // Function to calculate distance between two points
+    function getDistance(p1, p2) {
+        return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
     }
 
     function handleMouseUp() {
-        // No mouse up handling required.
+        // Handle end of Ctrl+drag annotation - finalize when mouse is released
+        if (isDraggingWithCtrl) {
+            setIsDraggingWithCtrl(false);
+            setLastDragPoint(null);
+
+            // Save original points before showing reduction panel
+            let points = [];
+            let annotationType = '';
+
+            // Finalize the shape when user releases Ctrl+click
+            if (selectedTool === 'polygon' && drawingPolygon && tempPoints.length >= 3) {
+                //finalizePolygon();
+                points = [...tempPoints];
+                annotationType = 'polygon';
+                setOriginalPoints([...tempPoints]);
+                setCurrentAnnotationPoints([...tempPoints]);
+                setCurrentAnnotationType('polygon');
+                setShowPointReductionPanel(true);
+
+            } else if (selectedTool === 'instance' && drawingInstancePolygon && tempInstancePoints.length >= 3) {
+                //finalizeInstancePolygon();
+                points = [...tempInstancePoints];
+                annotationType = 'instance';
+                setOriginalPoints([...tempInstancePoints]);
+                setCurrentAnnotationPoints([...tempInstancePoints]);
+                setCurrentAnnotationType('instance');
+                setShowPointReductionPanel(true);
+
+            } else if (selectedTool === 'semantic' && drawingSemanticPolygon && tempSemanticPoints.length >= 3) {
+                //finalizeSemanticPolygon();
+                points = [...tempSemanticPoints];
+                annotationType = 'semantic';
+                setOriginalPoints([...tempSemanticPoints]);
+                setCurrentAnnotationPoints([...tempSemanticPoints]);
+                setCurrentAnnotationType('semantic');
+                setShowPointReductionPanel(true);
+
+            } else if (selectedTool === 'panoptic') {
+                if (panopticOption === 'instance' && drawingInstancePolygon && tempInstancePoints.length >= 3) {
+                    //finalizeInstancePolygon();
+                    points = [...tempInstancePoints];
+                    annotationType = 'panoptic-instance';
+                    setOriginalPoints([...tempInstancePoints]);
+                    setCurrentAnnotationPoints([...tempInstancePoints]);
+                    setCurrentAnnotationType('panoptic-instance');
+                    setShowPointReductionPanel(true);
+
+                } else if (panopticOption === 'semantic' && drawingSemanticPolygon && tempSemanticPoints.length >= 3) {
+                    //finalizeSemanticPolygon();
+                    points = [...tempSemanticPoints];
+                    annotationType = 'panoptic-semantic';
+                    setOriginalPoints([...tempSemanticPoints]);
+                    setCurrentAnnotationPoints([...tempSemanticPoints]);
+                    setCurrentAnnotationType('panoptic-semantic');
+                    setShowPointReductionPanel(true);
+
+                }
+            }
+        }
+    }
+
+    function reducePoints(points, threshold) {
+        if (points.length <= 3) return points; // Minimum 3 points for polygon
+
+        const result = [points[0]]; // Always keep the first point
+
+        for (let i = 1; i < points.length; i++) {
+            const prevPoint = result[result.length - 1];
+            const currentPoint = points[i];
+
+            if (getDistance(prevPoint, currentPoint) >= threshold) {
+                result.push(currentPoint);
+            }
+        }
+
+        // Ensure at least 3 points
+        if (result.length < 3) {
+            return points.filter((_, index) => index % Math.floor(points.length / 3) === 0);
+        }
+
+        return result;
+    }
+
+    // function to reduce points based on the distance threshold:
+    function applyPointReduction() {
+        // Apply the reduced points based on current annotation type
+        if (currentAnnotationType === 'polygon') {
+            finalizePolygon(currentAnnotationPoints);
+        } else if (currentAnnotationType === 'instance') {
+            finalizeInstancePolygon(currentAnnotationPoints);
+        } else if (currentAnnotationType === 'semantic') {
+            finalizeSemanticPolygon(currentAnnotationPoints);
+        } else if (currentAnnotationType === 'panoptic-instance') {
+            finalizeInstancePolygon(currentAnnotationPoints);
+        } else if (currentAnnotationType === 'panoptic-semantic') {
+            finalizeSemanticPolygon(currentAnnotationPoints);
+        }
+
+        // Reset and hide the panel
+        setIsShowingReducedPreview(false);
+        setShowPointReductionPanel(false);
+        setCurrentAnnotationPoints([]);
+        setCurrentAnnotationType('');
+    }
+
+    // functions to apply or cancel point reduction:
+    function cancelPointReduction() {
+        // Use original points for finalization
+        if (currentAnnotationType === 'polygon') {
+            finalizePolygon(originalPoints);
+        } else if (currentAnnotationType === 'instance') {
+            finalizeInstancePolygon(originalPoints);
+        } else if (currentAnnotationType === 'semantic') {
+            finalizeSemanticPolygon(originalPoints);
+        } else if (currentAnnotationType === 'panoptic-instance') {
+            finalizeInstancePolygon(originalPoints);
+        } else if (currentAnnotationType === 'panoptic-semantic') {
+            finalizeSemanticPolygon(originalPoints);
+        }
+
+        // Reset and hide the panel
+        setIsShowingReducedPreview(false);
+        setShowPointReductionPanel(false);
+        setCurrentAnnotationPoints([]);
+        setCurrentAnnotationType('');
+    }
+
+    // function to handle slider changes:
+    function handleDistanceChange(e) {
+        const newThreshold = parseInt(e.target.value);
+        setDistanceThreshold(newThreshold);
+
+        // Update points in real time
+        const reducedPoints = reducePoints(originalPoints, newThreshold);
+        setCurrentAnnotationPoints(reducedPoints);
+
+        // Set preview flag to true so we know to render the preview
+        setIsShowingReducedPreview(true);
+    }
+
+    // helper function to render the appropriate in-progress shape based on reduction state
+    function renderInProgressShape() {
+        const pointsToShow = isShowingReducedPreview ? currentAnnotationPoints : originalPoints;
+
+        if (currentAnnotationType === 'polygon' ||
+            currentAnnotationType === 'instance' ||
+            currentAnnotationType === 'semantic' ||
+            currentAnnotationType === 'panoptic-instance' ||
+            currentAnnotationType === 'panoptic-semantic') {
+
+            // Only render if we have points
+            if (pointsToShow.length <= 0) return null;
+
+            return (
+                <>
+                    {pointsToShow.length > 1 && (
+                        <Line
+                            points={flattenPoints([...pointsToShow, pointsToShow[0]])}
+                            fill={activeLabelColor + '55'}
+                            stroke={activeLabelColor}
+                            strokeWidth={2 / scale}
+                            closed
+                        />
+                    )}
+                    {pointsToShow.map((pt, idx) => (
+                        <Circle
+                            key={idx}
+                            x={pt.x}
+                            y={pt.y}
+                            radius={4 / scale}
+                            fill="#fff"
+                            stroke={activeLabelColor}
+                            strokeWidth={1 / scale}
+                        />
+                    ))}
+                </>
+            );
+        }
+
+        return null;
     }
 
     function handleDblClick() {
@@ -898,40 +1182,15 @@ export default function SegmentationCanvas({
                             return null;
                         })}
 
-                        {/* In-progress Polygon */}
-                        {drawingPolygon && selectedTool === 'polygon' && (
+                        {/* Dynamic Preview of Point Reduction */}
+                        {showPointReductionPanel && (
                             <>
-                                {tempPoints.length > 1 && (
-                                    <Line
-                                        points={flattenPoints([...tempPoints, tempPoints[0]])}
-                                        fill={activeLabelColor + '55'}
-                                        stroke={activeLabelColor}
-                                        strokeWidth={2 / scale}
-                                        closed
-                                    />
-                                )}
-                                {tempPoints.map((pt, idx) => (
-                                    <Circle
-                                        key={idx}
-                                        x={pt.x}
-                                        y={pt.y}
-                                        radius={4 / scale}
-                                        fill="#fff"
-                                        stroke={activeLabelColor}
-                                        strokeWidth={1 / scale}
-                                    />
-                                ))}
-                            </>
-                        )}
-
-                        {/* In-progress Instance Segmentation Polygon */}
-                        {drawingInstancePolygon && selectedTool === 'instance' && (
-                            <>
-                                {tempInstancePoints.length > 1 && (
+                                {/* Use currentAnnotationPoints if preview is enabled, otherwise use originalPoints */}
+                                {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).length > 1 && (
                                     <Line
                                         points={flattenPoints([
-                                            ...tempInstancePoints,
-                                            tempInstancePoints[0],
+                                            ...(isShowingReducedPreview ? currentAnnotationPoints : originalPoints),
+                                            (isShowingReducedPreview ? currentAnnotationPoints : originalPoints)[0]
                                         ])}
                                         fill={activeLabelColor + '55'}
                                         stroke={activeLabelColor}
@@ -939,7 +1198,7 @@ export default function SegmentationCanvas({
                                         closed
                                     />
                                 )}
-                                {tempInstancePoints.map((pt, idx) => (
+                                {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).map((pt, idx) => (
                                     <Circle
                                         key={idx}
                                         x={pt.x}
@@ -953,101 +1212,230 @@ export default function SegmentationCanvas({
                             </>
                         )}
 
-                        {/* In-progress Semantic Segmentation Polygon */}
-                        {drawingSemanticPolygon && selectedTool === 'semantic' && (
+                        {/* When not in point reduction mode, show original in-progress shapes */}
+                        {!showPointReductionPanel && (
                             <>
-                                {tempSemanticPoints.length > 1 && (
-                                    <Line
-                                        points={flattenPoints([
-                                            ...tempSemanticPoints,
-                                            tempSemanticPoints[0],
-                                        ])}
-                                        fill={activeLabelColor + '55'}
-                                        stroke={activeLabelColor}
-                                        strokeWidth={2 / scale}
-                                        closed
-                                    />
+                                {/* In-progress Polygon */}
+                                {drawingPolygon && selectedTool === 'polygon' && (
+                                    <>
+                                        {tempPoints.length > 1 && (
+                                            <Line
+                                                points={flattenPoints([...tempPoints, tempPoints[0]])}
+                                                fill={activeLabelColor + '55'}
+                                                stroke={activeLabelColor}
+                                                strokeWidth={2 / scale}
+                                                closed
+                                            />
+                                        )}
+                                        {tempPoints.map((pt, idx) => (
+                                            <Circle
+                                                key={idx}
+                                                x={pt.x}
+                                                y={pt.y}
+                                                radius={4 / scale}
+                                                fill="#fff"
+                                                stroke={activeLabelColor}
+                                                strokeWidth={1 / scale}
+                                            />
+                                        ))}
+                                    </>
                                 )}
-                                {tempSemanticPoints.map((pt, idx) => (
-                                    <Circle
-                                        key={idx}
-                                        x={pt.x}
-                                        y={pt.y}
-                                        radius={4 / scale}
-                                        fill="#fff"
-                                        stroke={activeLabelColor}
-                                        strokeWidth={1 / scale}
-                                    />
-                                ))}
+
+                                {/* In-progress Instance Segmentation Polygon */}
+                                {drawingInstancePolygon && selectedTool === 'instance' && (
+                                    <>
+                                        {tempInstancePoints.length > 1 && (
+                                            <Line
+                                                points={flattenPoints([
+                                                    ...tempInstancePoints,
+                                                    tempInstancePoints[0],
+                                                ])}
+                                                fill={activeLabelColor + '55'}
+                                                stroke={activeLabelColor}
+                                                strokeWidth={2 / scale}
+                                                closed
+                                            />
+                                        )}
+                                        {tempInstancePoints.map((pt, idx) => (
+                                            <Circle
+                                                key={idx}
+                                                x={pt.x}
+                                                y={pt.y}
+                                                radius={4 / scale}
+                                                fill="#fff"
+                                                stroke={activeLabelColor}
+                                                strokeWidth={1 / scale}
+                                            />
+                                        ))}
+                                    </>
+                                )}
+
+                                {/* In-progress Semantic Segmentation Polygon */}
+                                {drawingSemanticPolygon && selectedTool === 'semantic' && (
+                                    <>
+                                        {tempSemanticPoints.length > 1 && (
+                                            <Line
+                                                points={flattenPoints([
+                                                    ...tempSemanticPoints,
+                                                    tempSemanticPoints[0],
+                                                ])}
+                                                fill={activeLabelColor + '55'}
+                                                stroke={activeLabelColor}
+                                                strokeWidth={2 / scale}
+                                                closed
+                                            />
+                                        )}
+                                        {tempSemanticPoints.map((pt, idx) => (
+                                            <Circle
+                                                key={idx}
+                                                x={pt.x}
+                                                y={pt.y}
+                                                radius={4 / scale}
+                                                fill="#fff"
+                                                stroke={activeLabelColor}
+                                                strokeWidth={1 / scale}
+                                            />
+                                        ))}
+                                    </>
+                                )}
+
+                                {/* In-progress Panoptic Polygon for Instance */}
+                                {drawingInstancePolygon &&
+                                    selectedTool === 'panoptic' &&
+                                    panopticOption === 'instance' && (
+                                        <>
+                                            {tempInstancePoints.length > 1 && (
+                                                <Line
+                                                    points={flattenPoints([
+                                                        ...tempInstancePoints,
+                                                        tempInstancePoints[0],
+                                                    ])}
+                                                    fill={activeLabelColor + '55'}
+                                                    stroke={activeLabelColor}
+                                                    strokeWidth={2 / scale}
+                                                    closed
+                                                />
+                                            )}
+                                            {tempInstancePoints.map((pt, idx) => (
+                                                <Circle
+                                                    key={idx}
+                                                    x={pt.x}
+                                                    y={pt.y}
+                                                    radius={4 / scale}
+                                                    fill="#fff"
+                                                    stroke={activeLabelColor}
+                                                    strokeWidth={1 / scale}
+                                                />
+                                            ))}
+                                        </>
+                                    )}
+
+                                {/* In-progress Panoptic Polygon for Semantic */}
+                                {drawingSemanticPolygon &&
+                                    selectedTool === 'panoptic' &&
+                                    panopticOption === 'semantic' && (
+                                        <>
+                                            {tempSemanticPoints.length > 1 && (
+                                                <Line
+                                                    points={flattenPoints([
+                                                        ...tempSemanticPoints,
+                                                        tempSemanticPoints[0],
+                                                    ])}
+                                                    fill={activeLabelColor + '55'}
+                                                    stroke={activeLabelColor}
+                                                    strokeWidth={2 / scale}
+                                                    closed
+                                                />
+                                            )}
+                                            {tempSemanticPoints.map((pt, idx) => (
+                                                <Circle
+                                                    key={idx}
+                                                    x={pt.x}
+                                                    y={pt.y}
+                                                    radius={4 / scale}
+                                                    fill="#fff"
+                                                    stroke={activeLabelColor}
+                                                    strokeWidth={1 / scale}
+                                                />
+                                            ))}
+                                        </>
+                                    )}
                             </>
                         )}
-
-                        {/* In-progress Panoptic Polygon for Instance */}
-                        {drawingInstancePolygon &&
-                            selectedTool === 'panoptic' &&
-                            // segmentationType === 'panoptic' &&
-                            panopticOption === 'instance' && (
-                                <>
-                                    {tempInstancePoints.length > 1 && (
-                                        <Line
-                                            points={flattenPoints([
-                                                ...tempInstancePoints,
-                                                tempInstancePoints[0],
-                                            ])}
-                                            fill={activeLabelColor + '55'}
-                                            stroke={activeLabelColor}
-                                            strokeWidth={2 / scale}
-                                            closed
-                                        />
-                                    )}
-                                    {tempInstancePoints.map((pt, idx) => (
-                                        <Circle
-                                            key={idx}
-                                            x={pt.x}
-                                            y={pt.y}
-                                            radius={4 / scale}
-                                            fill="#fff"
-                                            stroke={activeLabelColor}
-                                            strokeWidth={1 / scale}
-                                        />
-                                    ))}
-                                </>
-                            )}
-
-                        {/* In-progress Panoptic Polygon for Semantic */}
-                        {drawingSemanticPolygon &&
-                            selectedTool === 'panoptic' &&
-                            //segmentationType === 'panoptic' &&
-                            panopticOption === 'semantic' && (
-                                <>
-                                    {tempSemanticPoints.length > 1 && (
-                                        <Line
-                                            points={flattenPoints([
-                                                ...tempSemanticPoints,
-                                                tempSemanticPoints[0],
-                                            ])}
-                                            fill={activeLabelColor + '55'}
-                                            stroke={activeLabelColor}
-                                            strokeWidth={2 / scale}
-                                            closed
-                                        />
-                                    )}
-                                    {tempSemanticPoints.map((pt, idx) => (
-                                        <Circle
-                                            key={idx}
-                                            x={pt.x}
-                                            y={pt.y}
-                                            radius={4 / scale}
-                                            fill="#fff"
-                                            stroke={activeLabelColor}
-                                            strokeWidth={1 / scale}
-                                        />
-                                    ))}
-                                </>
-                            )}
                     </Group>
                 </Layer>
             </Stage>
+
+            {/* Point Reduction Panel */}
+            {showPointReductionPanel && (
+                <div
+                    className="point-reduction-panel"
+                    style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        borderRadius: '5px',
+                        padding: '10px',
+                        zIndex: 1000,
+                        color: 'white',
+                        width: '300px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>
+                            Reduce Points: {originalPoints.length} →
+                            <span style={{ color: originalPoints.length !== currentAnnotationPoints.length ? '#FFC107' : 'white' }}>
+                                {currentAnnotationPoints.length}
+                            </span>
+                        </span>
+                        <button
+                            onClick={cancelPointReduction}
+                            style={{
+                                backgroundColor: '#f44336',
+                                border: 'none',
+                                color: 'white',
+                                padding: '5px 10px',
+                                borderRadius: '3px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                    <div>
+                        <input
+                            type="range"
+                            min="5"
+                            max="100"
+                            value={distanceThreshold}
+                            onChange={handleDistanceChange}
+                            style={{ width: '100%' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Less Points</span>
+                            <span>More Points</span>
+                        </div>
+                    </div>
+                    <button
+                        onClick={applyPointReduction}
+                        style={{
+                            backgroundColor: '#4CAF50',
+                            border: 'none',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '3px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Apply
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

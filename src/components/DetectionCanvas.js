@@ -98,6 +98,19 @@ export default function DetectionCanvas({
   // For copy/paste
   const [copiedAnnotation, setCopiedAnnotation] = useState(null);
 
+  // For Ctrl+Click dragging feature for automatic annotation
+  const [isDraggingWithCtrl, setIsDraggingWithCtrl] = useState(false);
+  const [lastDragPoint, setLastDragPoint] = useState(null);
+  const minDistanceBetweenPoints = 10; // Minimum pixel distance between points when dragging
+  // For point reduction panel
+  const [showPointReductionPanel, setShowPointReductionPanel] = useState(false);
+  const [currentAnnotationPoints, setCurrentAnnotationPoints] = useState([]);
+  const [currentAnnotationType, setCurrentAnnotationType] = useState('');
+  const [distanceThreshold, setDistanceThreshold] = useState(10); // Default threshold
+  const [originalPoints, setOriginalPoints] = useState([]); // Store original points for cancellation
+
+  const [isShowingReducedPreview, setIsShowingReducedPreview] = useState(false);
+
   //For icon-change during annotation
   const crosshairCursor = `url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="10" x2="50" y2="45" stroke="black" stroke-width="2"/><line x1="50" y1="55" x2="50" y2="90" stroke="black" stroke-width="2"/><line x1="10" y1="50" x2="45" y2="50" stroke="black" stroke-width="2"/><line x1="55" y1="50" x2="90" y2="50" stroke="black" stroke-width="2"/><circle cx="50" cy="50" r="1" fill="black"/></svg>') 50 50, crosshair`;
 
@@ -737,6 +750,8 @@ export default function DetectionCanvas({
       setNewEllipse(null);
       setTempPointPoints([]);
       setDrawingPoint(false);
+      setIsDraggingWithCtrl(false);
+      setLastDragPoint(null);
     };
     window.addEventListener('cancel-annotation', onCancelAnnotation);
     return () =>
@@ -788,6 +803,21 @@ export default function DetectionCanvas({
     const pos = getGroupPos(evt);
     if (!pos) return;
 
+    // Check if Ctrl key is pressed for automatic annotation
+    const isCtrlPressed = evt.evt.ctrlKey;
+
+    // For tools that support Ctrl+drag automatic annotation
+    if (isCtrlPressed && (selectedTool === 'polygon')) {
+      setIsDraggingWithCtrl(true);
+      setLastDragPoint(pos);
+
+      // Add first point
+      if (selectedTool === 'polygon') {
+        addPolygonPoint(pos);
+      }
+      return;
+    }
+
     const now = Date.now();
     const delta = now - lastClickTimeRef.current;
     // Tools that use double-click to finalize
@@ -822,6 +852,33 @@ export default function DetectionCanvas({
       const pos = getGroupPos(evt);
       if (pos) updateEllipse(pos);
     }
+    // Handle Ctrl+drag for continuous annotation
+    if (isDraggingWithCtrl) {
+      const pos = getGroupPos(evt);
+      if (!pos || !lastDragPoint) return;
+
+      // Only add new point if we've moved far enough from the last point
+      const distance = getDistance(lastDragPoint, pos);
+      if (distance >= minDistanceBetweenPoints) {
+        // Add a point based on the tool
+        if (selectedTool === 'polygon' && drawingPolygon) {
+          // Check point limit before adding
+          if (pointsLimit === 0 || tempPoints.length < pointsLimit) {
+            addPolygonPoint(pos);
+          } else if (tempPoints.length >= pointsLimit) {
+            setIsDraggingWithCtrl(false);
+            finalizePolygon();
+            return;
+          }
+        }
+        setLastDragPoint(pos);
+      }
+    }
+  }
+
+  // Function to calculate distance between two points for automatic annotation
+  function getDistance(p1, p2) {
+    return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
   }
 
   function handleMouseUp() {
@@ -830,6 +887,92 @@ export default function DetectionCanvas({
     } else if (selectedTool === 'ellipse' && newEllipse) {
       finalizeEllipse();
     }
+    // Handle end of Ctrl+drag annotation - finalize when mouse is released
+    if (isDraggingWithCtrl) {
+      setIsDraggingWithCtrl(false);
+      setLastDragPoint(null);
+
+      // Reset isShowingReducedPreview to ensure original points are shown initially
+      setIsShowingReducedPreview(false);
+
+      // Save original points before showing reduction panel
+      let points = [];
+      let annotationType = '';
+
+      // Finalize the shape when user releases Ctrl+click
+      if (selectedTool === 'polygon' && drawingPolygon && tempPoints.length >= 3) {
+        //finalizePolygon();
+        points = [...tempPoints];
+        annotationType = 'polygon';
+        setOriginalPoints([...tempPoints]);
+        setCurrentAnnotationPoints([...tempPoints]);
+        setCurrentAnnotationType('polygon');
+        setShowPointReductionPanel(true);
+      }
+    }
+  }
+
+  // function to reduce points based on the distance threshold:
+  function reducePoints(points, threshold) {
+    if (points.length <= 3) return points; // Minimum 3 points for polygon
+
+    const result = [points[0]]; // Always keep the first point
+
+    for (let i = 1; i < points.length; i++) {
+      const prevPoint = result[result.length - 1];
+      const currentPoint = points[i];
+
+      if (getDistance(prevPoint, currentPoint) >= threshold) {
+        result.push(currentPoint);
+      }
+    }
+
+    // Ensure at least 3 points
+    if (result.length < 3) {
+      return points.filter((_, index) => index % Math.floor(points.length / 3) === 0);
+    }
+
+    return result;
+  }
+
+  // functions to apply or cancel point reduction:
+  function applyPointReduction() {
+    // Apply the reduced points based on current annotation type
+    if (currentAnnotationType === 'polygon') {
+      finalizePolygon(currentAnnotationPoints);
+    }
+
+    // Reset and hide the panel
+    setIsShowingReducedPreview(false);
+    setShowPointReductionPanel(false);
+    setCurrentAnnotationPoints([]);
+    setCurrentAnnotationType('');
+  }
+
+  function cancelPointReduction() {
+    // Use original points for finalization
+    if (currentAnnotationType === 'polygon') {
+      finalizePolygon(originalPoints);
+    }
+
+    // Reset and hide the panel
+    setIsShowingReducedPreview(false);
+    setShowPointReductionPanel(false);
+    setCurrentAnnotationPoints([]);
+    setCurrentAnnotationType('');
+  }
+
+  // function to handle slider changes:
+  function handleDistanceChange(e) {
+    const newThreshold = parseInt(e.target.value);
+    setDistanceThreshold(newThreshold);
+
+    // Update points in real time
+    const reducedPoints = reducePoints(originalPoints, newThreshold);
+    setCurrentAnnotationPoints(reducedPoints);
+
+    // Set preview flag to true so we know to render the preview
+    setIsShowingReducedPreview(true);
   }
 
   function handleDblClick() {
@@ -1207,7 +1350,6 @@ export default function DetectionCanvas({
         onDblClick={handleDblClick}
         onContextMenu={handleContextMenu}
       >
-
         <Layer>
           <Group
             id="anno-group"
@@ -1256,23 +1398,20 @@ export default function DetectionCanvas({
                         handleBBoxDragEnd(i, e);
                       }}
                       onClick={(e) => {
-
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true; //
+                          e.cancelBubble = true;
                           onSelectAnnotation(i);
                         }
                       }}
                     />
                     {selectedAnnotationIndex === i && (
-                      <>
-                        <DeleteLabel
-                          annotation={ann}
-                          scale={scale}
-                          shapeBoundingBox={shapeBoundingBox}
-                          onDelete={() => onDeleteAnnotation(i)}
-                          color={annColor}
-                        />
-                      </>
+                      <DeleteLabel
+                        annotation={ann}
+                        scale={scale}
+                        shapeBoundingBox={shapeBoundingBox}
+                        onDelete={() => onDeleteAnnotation(i)}
+                        color={annColor}
+                      />
                     )}
                   </React.Fragment>
                 );
@@ -1295,11 +1434,10 @@ export default function DetectionCanvas({
                       onDragStart={(e) => (e.cancelBubble = true)}
                       onDragMove={(e) => (e.cancelBubble = true)}
                       onDragEnd={(e) => {
-                        e.cancelBubble = true; //
+                        e.cancelBubble = true;
                         handleEllipseDragEnd(i, e);
                       }}
                       onClick={(e) => {
-
                         if (selectedTool === 'move') {
                           e.cancelBubble = true;
                           onSelectAnnotation(i);
@@ -1307,15 +1445,13 @@ export default function DetectionCanvas({
                       }}
                     />
                     {selectedAnnotationIndex === i && (
-                      <>
-                        <DeleteLabel
-                          annotation={ann}
-                          scale={scale}
-                          shapeBoundingBox={shapeBoundingBox}
-                          onDelete={() => onDeleteAnnotation(i)}
-                          color={annColor}
-                        />
-                      </>
+                      <DeleteLabel
+                        annotation={ann}
+                        scale={scale}
+                        shapeBoundingBox={shapeBoundingBox}
+                        onDelete={() => onDeleteAnnotation(i)}
+                        color={annColor}
+                      />
                     )}
                   </React.Fragment>
                 );
@@ -1335,23 +1471,20 @@ export default function DetectionCanvas({
                         handlePointDragEnd(i, e);
                       }}
                       onClick={(e) => {
-
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true; //
+                          e.cancelBubble = true;
                           onSelectAnnotation(i);
                         }
                       }}
                     />
                     {selectedAnnotationIndex === i && (
-                      <>
-                        <DeleteLabel
-                          annotation={ann}
-                          scale={scale}
-                          shapeBoundingBox={shapeBoundingBox}
-                          onDelete={() => onDeleteAnnotation(i)}
-                          color={annColor}
-                        />
-                      </>
+                      <DeleteLabel
+                        annotation={ann}
+                        scale={scale}
+                        shapeBoundingBox={shapeBoundingBox}
+                        onDelete={() => onDeleteAnnotation(i)}
+                        color={annColor}
+                      />
                     )}
                   </React.Fragment>
                 );
@@ -1370,9 +1503,8 @@ export default function DetectionCanvas({
                         handlePolylineDragEnd(i, e);
                       }}
                       onClick={(e) => {
-
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true; //
+                          e.cancelBubble = true;
                           onSelectAnnotation(i);
                         }
                       }}
@@ -1419,15 +1551,13 @@ export default function DetectionCanvas({
                       />
                     </Group>
                     {selectedAnnotationIndex === i && (
-                      <>
-                        <DeleteLabel
-                          annotation={ann}
-                          scale={scale}
-                          shapeBoundingBox={shapeBoundingBox}
-                          onDelete={() => onDeleteAnnotation(i)}
-                          color={annColor}
-                        />
-                      </>
+                      <DeleteLabel
+                        annotation={ann}
+                        scale={scale}
+                        shapeBoundingBox={shapeBoundingBox}
+                        onDelete={() => onDeleteAnnotation(i)}
+                        color={annColor}
+                      />
                     )}
                   </React.Fragment>
                 );
@@ -1444,9 +1574,8 @@ export default function DetectionCanvas({
                           handlePolygonDragEnd(i, e);
                         }}
                         onClick={(e) => {
-
                           if (selectedTool === 'move') {
-                            e.cancelBubble = true; //
+                            e.cancelBubble = true;
                             onSelectAnnotation(i);
                           }
                         }}
@@ -1485,15 +1614,13 @@ export default function DetectionCanvas({
                         ))}
                       </Group>
                       {selectedAnnotationIndex === i && (
-                        <>
-                          <DeleteLabel
-                            annotation={ann}
-                            scale={scale}
-                            shapeBoundingBox={shapeBoundingBox}
-                            onDelete={() => onDeleteAnnotation(i)}
-                            color={annColor}
-                          />
-                        </>
+                        <DeleteLabel
+                          annotation={ann}
+                          scale={scale}
+                          shapeBoundingBox={shapeBoundingBox}
+                          onDelete={() => onDeleteAnnotation(i)}
+                          color={annColor}
+                        />
                       )}
                     </React.Fragment>
                   );
@@ -1512,9 +1639,8 @@ export default function DetectionCanvas({
                           handlePolygonDragEnd(i, e);
                         }}
                         onClick={(e) => {
-
                           if (selectedTool === 'move') {
-                            e.cancelBubble = true; //
+                            e.cancelBubble = true;
                             onSelectAnnotation(i);
                           }
                         }}
@@ -1562,15 +1688,13 @@ export default function DetectionCanvas({
                         />
                       </Group>
                       {selectedAnnotationIndex === i && (
-                        <>
-                          <DeleteLabel
-                            annotation={ann}
-                            scale={scale}
-                            shapeBoundingBox={shapeBoundingBox}
-                            onDelete={() => onDeleteAnnotation(i)}
-                            color={annColor}
-                          />
-                        </>
+                        <DeleteLabel
+                          annotation={ann}
+                          scale={scale}
+                          shapeBoundingBox={shapeBoundingBox}
+                          onDelete={() => onDeleteAnnotation(i)}
+                          color={annColor}
+                        />
                       )}
                     </React.Fragment>
                   );
@@ -1586,9 +1710,8 @@ export default function DetectionCanvas({
                         handlePolylineDragEnd(i, e);
                       }}
                       onClick={(e) => {
-
                         if (selectedTool === 'move') {
-                          e.cancelBubble = true; //
+                          e.cancelBubble = true;
                           onSelectAnnotation(i);
                         }
                       }}
@@ -1613,15 +1736,13 @@ export default function DetectionCanvas({
                       ))}
                     </Group>
                     {selectedAnnotationIndex === i && (
-                      <>
-                        <DeleteLabel
-                          annotation={ann}
-                          scale={scale}
-                          shapeBoundingBox={shapeBoundingBox}
-                          onDelete={() => onDeleteAnnotation(i)}
-                          color={annColor}
-                        />
-                      </>
+                      <DeleteLabel
+                        annotation={ann}
+                        scale={scale}
+                        shapeBoundingBox={shapeBoundingBox}
+                        onDelete={() => onDeleteAnnotation(i)}
+                        color={annColor}
+                      />
                     )}
                   </React.Fragment>
                 );
@@ -1642,8 +1763,37 @@ export default function DetectionCanvas({
               />
             )}
 
-            {/* In-progress Polygon */}
-            {drawingPolygon && selectedTool === 'polygon' && (
+            {/* Dynamic Point Reduction Preview */}
+            {showPointReductionPanel && (
+              <>
+                {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).length > 1 && (
+                  <Line
+                    points={flattenPoints([
+                      ...(isShowingReducedPreview ? currentAnnotationPoints : originalPoints),
+                      (isShowingReducedPreview ? currentAnnotationPoints : originalPoints)[0]
+                    ])}
+                    fill={activeLabelColor + '55'}
+                    stroke={activeLabelColor}
+                    strokeWidth={2 / scale}
+                    closed
+                  />
+                )}
+                {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).map((pt, idx) => (
+                  <Circle
+                    key={idx}
+                    x={pt.x}
+                    y={pt.y}
+                    radius={4 / scale}
+                    fill="#fff"
+                    stroke={activeLabelColor}
+                    strokeWidth={1 / scale}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* In-progress Polygon - Only show if NOT in point reduction mode */}
+            {!showPointReductionPanel && drawingPolygon && selectedTool === 'polygon' && (
               <>
                 {tempPoints.length > 1 && (
                   <Line
@@ -1736,6 +1886,77 @@ export default function DetectionCanvas({
           />
         </Layer>
       </Stage>
+
+      {/* Point Reduction Panel */}
+      {showPointReductionPanel && (
+        <div
+          className="point-reduction-panel"
+          style={{
+            position: 'absolute',
+            top: '10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: '5px',
+            padding: '10px',
+            zIndex: 1000,
+            color: 'white',
+            width: '300px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>
+              Reduce Points: {originalPoints.length} →
+              <span style={{ color: originalPoints.length !== currentAnnotationPoints.length ? '#FFC107' : 'white' }}>
+                {currentAnnotationPoints.length}
+              </span>
+            </span>
+            <button
+              onClick={cancelPointReduction}
+              style={{
+                backgroundColor: '#f44336',
+                border: 'none',
+                color: 'white',
+                padding: '5px 10px',
+                borderRadius: '3px',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          <div>
+            <input
+              type="range"
+              min="5"
+              max="100"
+              value={distanceThreshold}
+              onChange={handleDistanceChange}
+              style={{ width: '100%' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Less Points</span>
+              <span>More Points</span>
+            </div>
+          </div>
+          <button
+            onClick={applyPointReduction}
+            style={{
+              backgroundColor: '#4CAF50',
+              border: 'none',
+              color: 'white',
+              padding: '8px',
+              borderRadius: '3px',
+              cursor: 'pointer'
+            }}
+          >
+            Apply
+          </button>
+        </div>
+      )}
     </div>
   );
 }
