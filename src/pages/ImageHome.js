@@ -15,6 +15,8 @@ export default function ImageHome() {
   const location = useLocation();
   const segmentationMode = location.state?.segmentationMode || false;
   const classificationMode = location.state?.classificationMode || false;
+  // Add this line with your other mode detections
+  const threeDMode = location.state?.threeDMode || false;
 
   const [taskName, setTaskName] = useState('');
   const [labelName, setLabelName] = useState('');
@@ -47,7 +49,26 @@ export default function ImageHome() {
   }, [files, navigate, location.state]);
 
   const handleFileChange = (e) => {
-    setFiles(Array.from(e.target.files));
+    const selectedFiles = Array.from(e.target.files);
+
+    if (threeDMode) {
+      // Filter for accepted 3D file formats
+      const allowed3DFormats = ['.obj', '.glb', '.gltf', '.ply', '.stl', '.3ds', '.fbx'];
+      const valid3DFiles = selectedFiles.filter(file => {
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        return allowed3DFormats.includes(extension);
+      });
+
+      if (valid3DFiles.length !== selectedFiles.length) {
+        alert('Only 3D model files are allowed in 3D annotation mode (.obj, .glb, .gltf, .ply, .stl, .3ds, .fbx)');
+        if (valid3DFiles.length === 0) return;
+      }
+
+      setFiles(valid3DFiles);
+    } else {
+      // For regular modes, accept all image files
+      setFiles(selectedFiles);
+    }
   };
 
   const getNextColor = () => {
@@ -199,7 +220,8 @@ export default function ImageHome() {
       const userSession = JSON.parse(localStorage.getItem('user'));
       const taskType = segmentationMode ? 'segmentation' :
         classificationMode ? 'classification' :
-          'detection';
+          threeDMode ? '3dannotation' :  // Add this line
+            'detection';
 
       const taskRes = await fetch('http://localhost:4000/api/tasks', {
         method: 'POST',
@@ -232,6 +254,8 @@ export default function ImageHome() {
       navigate('/segmentation', { state: { folderInfo: folderData } });
     } else if (classificationMode) {
       navigate('/classification', { state: { folderInfo: folderData } });
+    } else if (threeDMode) {
+      navigate('/3d', { state: { folderInfo: folderData } }); // Change to 3D route
     } else {
       navigate('/detection', { state: { folderInfo: folderData } });
     }
@@ -241,7 +265,7 @@ export default function ImageHome() {
     <div className='parent-container'>
       <HomeTopBar />
       <div className="image-home-container">
-        <h2>Create a New Image Annotation Task</h2>
+        <h2>Create a New {threeDMode ? '3D Model' : 'Image'} Annotation Task</h2>
         <div className="form-area">
           <label>Task Name</label>
           <input
@@ -280,13 +304,16 @@ export default function ImageHome() {
         </div>
 
         <div className="form-area">
-          <label>Select Images</label>
+          <label>{threeDMode ? 'Select 3D Models' : 'Select Images'}</label>
           <input
             type="file"
             multiple
-            accept="image/*"
+            accept={threeDMode ? ".obj,.glb,.gltf,.ply,.stl,.3ds,.fbx" : "image/*"}
             onChange={handleFileChange}
           />
+          {threeDMode && (
+            <p className="file-hint">Supported formats: .obj, .glb, .gltf, .ply, .stl, .3ds, .fbx</p>
+          )}
         </div>
 
         {previews.length > 0 && (
@@ -294,7 +321,6 @@ export default function ImageHome() {
             {previews.map((p, i) => (
               <div key={i} className="preview-item">
                 <img src={p.url} alt={p.name} />
-                <p>{p.name}</p>
               </div>
             ))}
           </div>
@@ -307,7 +333,9 @@ export default function ImageHome() {
               ? 'Go to Segmentation'
               : classificationMode
                 ? 'Go to Classification'
-                : 'Go to Detection'}
+                : threeDMode
+                  ? 'Go to 3D Annotation'
+                  : 'Go to Detection'}
           </button>
         </div>
       </div>

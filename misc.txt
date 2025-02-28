@@ -1,0 +1,3017 @@
+3D.js:
+"import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import HomeTopBar from '../components/HomeTopBar';
+import ThreeDCanvas from '../components/3DCanvas';
+import AnnotationListSidebar from '../components/AnnotationListSidebar';
+import './3D.css';
+
+// SVG Icon Components
+const UndoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 14L4 9l5-5" />
+        <path d="M4 9h10c3 0 7 1 7 6v1" />
+    </svg>
+);
+
+const RedoIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 14l5-5-5-5" />
+        <path d="M20 9H10C7 9 3 10 3 15v1" />
+    </svg>
+);
+
+const SaveIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+        <polyline points="17 21 17 13 7 13 7 21" />
+        <polyline points="7 3 7 8 15 8" />
+    </svg>
+);
+
+const MoveIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="5 9 2 12 5 15" />
+        <polyline points="9 5 12 2 15 5" />
+        <polyline points="15 19 12 22 9 19" />
+        <polyline points="19 9 22 12 19 15" />
+        <line x1="2" y1="12" x2="22" y2="12" />
+        <line x1="12" y1="2" x2="12" y2="22" />
+    </svg>
+);
+
+const CuboidIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+    </svg>
+);
+
+const PlusIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+);
+
+const PaletteIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="13.5" cy="6.5" r="2.5" />
+        <circle cx="17.5" cy="10.5" r="2.5" />
+        <circle cx="8.5" cy="7.5" r="2.5" />
+        <circle cx="6.5" cy="12.5" r="2.5" />
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.688h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+    </svg>
+);
+
+const ToolsIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+);
+
+const CenterIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="16" />
+        <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+);
+
+const AddModelIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+        <line x1="12" y1="19" x2="12" y2="23" />
+        <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+);
+
+const DeleteModelIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+        <path d="M2 17l10 5 10-5" />
+        <path d="M2 12l10 5 10-5" />
+        <line x1="4" y1="19" x2="20" y2="19" stroke="#e74c3c" />
+    </svg>
+);
+
+export default function ThreeD() {
+    const navigate = useNavigate();
+    const { state } = useLocation();
+    const folderInfo = state?.folderInfo;
+    const canvasHelperRef = useRef(null);
+    const canvasAreaRef = useRef(null);
+    const fileInputRef = useRef(null);
+
+    const [filesList, setFilesList] = useState(() => {
+        return folderInfo?.files || [];
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
+    const [showAddLabelModal, setShowAddLabelModal] = useState(false);
+    const [newLabelName, setNewLabelName] = useState('');
+    const [newLabelColor, setNewLabelColor] = useState('#ff0000');
+
+    if (!folderInfo) {
+        return (
+            <div style={{ padding: 20 }}>
+                <h2>No folder info found. Please create a task first.</h2>
+                <button onClick={() => navigate('/')} className="primary">Go Home</button>
+            </div>
+        );
+    }
+
+    const { folderId, taskId, taskName, labelClasses, files } = folderInfo;
+
+    // State for annotations and undo/redo
+    const [annotations, setAnnotations] = useState(() => {
+        if (folderInfo && folderInfo.annotations) {
+            return folderInfo.annotations;
+        }
+        return {};
+    });
+    const [undoStack, setUndoStack] = useState([]);
+    const [redoStack, setRedoStack] = useState([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isSaving, setIsSaving] = useState(false);
+    const [showHelperText, setShowHelperText] = useState(false);
+    const [helperText, setHelperText] = useState('');
+
+    // State for model position, tools, and labels
+    const [modelPosition, setModelPosition] = useState({ x: 0, y: 0 });
+    const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+    const [selectedTool, setSelectedTool] = useState('move');
+    const [selectedLabelClass, setSelectedLabelClass] = useState(
+        labelClasses[0]?.name || ''
+    );
+    const [localLabelClasses, setLocalLabelClasses] = useState(labelClasses);
+    const [scale, setScale] = useState(1.0);
+
+    const currentFileUrl = filesList[currentIndex]?.url;
+    const currentShapes = annotations[currentFileUrl] || [];
+    const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
+
+    // Candidate colors for auto-selection
+    const CANDIDATE_COLORS = [
+        '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
+        '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
+        '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000',
+        '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
+    ];
+
+    // Update annotations
+    const handleAnnotationsChange = (newShapes) => {
+        const updated = {
+            ...annotations,
+            [currentFileUrl]: newShapes,
+        };
+        setUndoStack([...undoStack, annotations]);
+        setRedoStack([]);
+        setAnnotations(updated);
+    };
+
+    const handleUpdateAllAnnotations = (updatedAnnotations) => {
+        const updated = {
+            ...annotations,
+            [currentFileUrl]: updatedAnnotations,
+        };
+        setUndoStack([...undoStack, annotations]);
+        setRedoStack([]);
+        setAnnotations(updated);
+    };
+
+    // Reset selection on model change
+    useEffect(() => {
+        setSelectedAnnotationIndex(null);
+    }, [currentIndex, currentFileUrl]);
+
+    // Show helper text when tool changes
+    useEffect(() => {
+        if (selectedTool === 'move') {
+            showHelper('Move and select objects (M)');
+        } else if (selectedTool === 'cuboid') {
+            showHelper('Cuboid annotation tool - Coming Soon (C)');
+        }
+    }, [selectedTool]);
+
+    // Calculate canvas dimensions
+    useEffect(() => {
+        if (canvasAreaRef.current) {
+            setCanvasDimensions({
+                width: canvasAreaRef.current.offsetWidth,
+                height: canvasAreaRef.current.offsetHeight
+            });
+        }
+    }, []);
+
+    // When the add-label modal is opened, automatically select a new color
+    useEffect(() => {
+        if (showAddLabelModal) {
+            // Find a color that isn't already used
+            const usedColors = new Set(localLabelClasses.map(lc => lc.color.toLowerCase()));
+            const availableColor = CANDIDATE_COLORS.find(color =>
+                !usedColors.has(color.toLowerCase())
+            ) || CANDIDATE_COLORS[0];
+
+            setNewLabelColor(availableColor);
+        }
+    }, [showAddLabelModal, localLabelClasses]);
+
+    // Helper functions
+    const showHelper = (text) => {
+        setHelperText(text);
+        setShowHelperText(true);
+        if (canvasHelperRef.current) {
+            canvasHelperRef.current.classList.add('visible');
+        }
+
+        setTimeout(() => {
+            if (canvasHelperRef.current) {
+                canvasHelperRef.current.classList.remove('visible');
+            }
+            setTimeout(() => setShowHelperText(false), 300);
+        }, 3000);
+    };
+
+    const handleCenterModel = () => {
+        if (currentFileUrl && canvasAreaRef.current) {
+            const canvasWidth = canvasAreaRef.current.offsetWidth;
+            const canvasHeight = canvasAreaRef.current.offsetHeight;
+            setModelPosition({
+                x: canvasWidth / 2 - 200,
+                y: canvasHeight / 2 - 200
+            });
+            showHelper('Model centered');
+        }
+    };
+
+    // Undo/Redo
+    const undo = () => {
+        if (undoStack.length === 0) return;
+        const prev = undoStack[undoStack.length - 1];
+        setRedoStack([...redoStack, annotations]);
+        setUndoStack(undoStack.slice(0, -1));
+        setAnnotations(prev);
+        showHelper('Undo successful');
+    };
+
+    const redo = () => {
+        if (redoStack.length === 0) return;
+        const next = redoStack[redoStack.length - 1];
+        setUndoStack([...undoStack, annotations]);
+        setRedoStack(redoStack.slice(0, -1));
+        setAnnotations(next);
+        showHelper('Redo successful');
+    };
+
+    // Annotation management
+    const handleDeleteAnnotation = (index) => {
+        const arr = [...currentShapes];
+        arr.splice(index, 1);
+        handleAnnotationsChange(arr);
+        showHelper('Annotation deleted');
+
+        if (selectedAnnotationIndex === index) {
+            setSelectedAnnotationIndex(null);
+        } else if (selectedAnnotationIndex > index) {
+            setSelectedAnnotationIndex(selectedAnnotationIndex - 1);
+        }
+    };
+
+    const handleUpdateAnnotation = (index, changes) => {
+        const arr = [...currentShapes];
+        arr[index] = { ...arr[index], ...changes };
+        handleAnnotationsChange(arr);
+    };
+
+    // Navigation
+    const handlePrev = () => {
+        if (currentIndex > 0) setCurrentIndex((i) => i - 1);
+    };
+
+    const handleNext = () => {
+        if (currentIndex < filesList.length - 1) setCurrentIndex((i) => i + 1);
+    };
+
+    // Zoom
+    const handleZoomIn = () => setScale((s) => Math.min(s + 0.1, 5));
+
+    const handleZoomOut = () => setScale((s) => Math.max(s - 0.1, 0.2));
+
+    const handleWheelZoom = (deltaY) => {
+        if (deltaY < 0) handleZoomIn();
+        else handleZoomOut();
+    };
+
+    // Save annotations
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const bodyData = {
+                folderId,
+                taskName,
+                labelClasses: localLabelClasses,
+                annotations,
+            };
+
+            const res = await fetch('http://localhost:4000/api/annotations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyData),
+            });
+
+            const data = await res.json();
+            showHelper('Annotations saved successfully');
+        } catch (err) {
+            console.error(err);
+            showHelper('Error saving annotations');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Handle shape completion
+    const handleFinishShape = () => {
+        setSelectedTool('move');
+        setSelectedAnnotationIndex(null);
+        showHelper('Annotation completed');
+    };
+
+    // Add new label
+    const handleAddNewLabel = async () => {
+        if (!newLabelName.trim()) {
+            showHelper('Label name cannot be empty');
+            return;
+        }
+
+        const nameExists = localLabelClasses.some(
+            (lc) => lc.name.toLowerCase() === newLabelName.trim().toLowerCase()
+        );
+
+        if (nameExists) {
+            showHelper('Label already exists');
+            return;
+        }
+
+        const colorExists = localLabelClasses.some(
+            (lc) => lc.color.toLowerCase() === newLabelColor.trim().toLowerCase()
+        );
+
+        if (colorExists) {
+            showHelper('Label color already used. Please choose a different color.');
+            return;
+        }
+
+        const newLabel = { name: newLabelName.trim(), color: newLabelColor };
+        const updatedLabels = [...localLabelClasses, newLabel];
+
+        try {
+            // Update labels in tasks.csv
+            const updateLabelsRes = await fetch(`http://localhost:4000/api/tasks/${folderInfo.taskId}/labels`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ labelClasses: updatedLabels })
+            });
+
+            if (!updateLabelsRes.ok) {
+                throw new Error('Failed to update labels in task');
+            }
+
+            // Update annotations.json with new labels
+            const annotationsRes = await fetch('http://localhost:4000/api/annotations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    folderId: folderInfo.folderId,
+                    taskName: taskName,
+                    labelClasses: updatedLabels,
+                    annotations: annotations
+                })
+            });
+
+            if (!annotationsRes.ok) {
+                throw new Error('Failed to update annotations');
+            }
+
+            // Update local state
+            setLocalLabelClasses(updatedLabels);
+            setSelectedLabelClass(newLabel.name);
+            setNewLabelName('');
+            setNewLabelColor('#ff0000');
+            setShowAddLabelModal(false);
+            showHelper(`Added new label: ${newLabel.name}`);
+        } catch (error) {
+            console.error('Error updating labels:', error);
+            showHelper('Failed to add new label: ' + error.message);
+        }
+    };
+
+    // File management
+    const handleAddModel = () => {
+        fileInputRef.current.click();
+    };
+
+    const handleFileSelect = async (e) => {
+        const selectedFiles = e.target.files;
+        if (!selectedFiles || selectedFiles.length === 0) return;
+
+        // Filter for 3D file formats
+        const allowed3DFormats = ['.obj', '.glb', '.gltf', '.ply', '.stl', '.3ds', '.fbx'];
+        const valid3DFiles = Array.from(selectedFiles).filter(file => {
+            const extension = '.' + file.name.split('.').pop().toLowerCase();
+            return allowed3DFormats.some(format =>
+                format.toLowerCase() === extension.toLowerCase()
+            );
+        });
+
+        if (valid3DFiles.length !== selectedFiles.length) {
+            alert('Some files are not valid 3D models and will be skipped.');
+            if (valid3DFiles.length === 0) {
+                alert('No valid 3D models were selected.');
+                return;
+            }
+        }
+
+        setIsUploading(true);
+        showHelper('Uploading 3D model(s)...');
+
+        const formData = new FormData();
+        valid3DFiles.forEach(file => formData.append('files', file));
+
+        try {
+            const response = await fetch(`http://localhost:4000/api/images/${folderId}`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload models');
+            }
+
+            const result = await response.json();
+
+            if (result.files && result.files.length > 0) {
+                const newFilesList = [...filesList, ...result.files];
+                setFilesList(newFilesList);
+                setCurrentIndex(filesList.length);
+                showHelper(`Added ${result.files.length} new model(s)`);
+            } else {
+                showHelper('No new models were added');
+            }
+        } catch (error) {
+            console.error('Error uploading models:', error);
+            showHelper('Error uploading models: ' + error.message);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const handleDeleteModel = () => {
+        if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) {
+            showHelper('No model to delete');
+            return;
+        }
+        setShowConfirmDeleteModal(true);
+    };
+
+    const confirmDeleteModel = async () => {
+        if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) return;
+
+        const currentFile = filesList[currentIndex];
+        setIsDeleting(true);
+
+        try {
+            const urlParts = currentFile.url.split('/');
+            const filename = urlParts[urlParts.length - 1];
+
+            const response = await fetch(`http://localhost:4000/api/images/${folderId}/${filename}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete model');
+            }
+
+            // Remove deleted file from the list
+            const updatedFiles = [...filesList];
+            updatedFiles.splice(currentIndex, 1);
+
+            // Remove annotations for this file
+            const updatedAnnotations = { ...annotations };
+            delete updatedAnnotations[currentFile.url];
+
+            // Update state
+            setFilesList(updatedFiles);
+            setAnnotations(updatedAnnotations);
+
+            // Adjust current index if needed
+            if (currentIndex >= updatedFiles.length && updatedFiles.length > 0) {
+                setCurrentIndex(updatedFiles.length - 1);
+            } else if (updatedFiles.length === 0) {
+                setCurrentIndex(0);
+            }
+
+            showHelper('Model deleted successfully');
+        } catch (error) {
+            console.error('Error deleting model:', error);
+            showHelper('Error deleting model');
+        } finally {
+            setIsDeleting(false);
+            setShowConfirmDeleteModal(false);
+        }
+    };
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Skip if inside input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'm' || e.key === 'M') {
+                setSelectedTool('move');
+            } else if (e.key === 'c' || e.key === 'C') {
+                setSelectedTool('cuboid');
+            } else if ((e.key === 's' || e.key === 'S') && e.ctrlKey) {
+                e.preventDefault();
+                handleSave();
+            } else if (e.key === 'Escape') {
+                if (selectedAnnotationIndex !== null) {
+                    setSelectedAnnotationIndex(null);
+                } else {
+                    const event = new CustomEvent('cancel-annotation');
+                    window.dispatchEvent(event);
+                }
+            } else if (e.key === 'ArrowRight') {
+                handleNext();
+            } else if (e.key === 'ArrowLeft') {
+                handlePrev();
+            } else if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) {
+                e.preventDefault();
+                undo();
+            } else if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
+                e.preventDefault();
+                redo();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [annotations, undoStack, redoStack, selectedAnnotationIndex]);
+
+    // Get active label color
+    const activeLabelColor = localLabelClasses.find(
+        (l) => l.name === selectedLabelClass
+    )?.color || '#ff0000';
+
+    return (
+        <div className="annotate-container">
+            {/* Hidden file input for adding models */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+                accept=".obj,.glb,.gltf,.ply,.stl,.3ds,.fbx"
+                multiple
+            />
+
+            <HomeTopBar
+                taskName={taskName}
+                showControls={true}
+                isSaving={isSaving}
+            />
+
+            <div className="annotate-actions">
+                <button onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)">
+                    <UndoIcon /> Undo
+                </button>
+                <button onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)">
+                    <RedoIcon /> Redo
+                </button>
+                <div className="divider"></div>
+                <button onClick={handleSave} className="primary" disabled={isSaving} title="Save (Ctrl+S)">
+                    <SaveIcon /> {isSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button onClick={handleCenterModel} title="Center Model (C)">
+                    <CenterIcon /> Center
+                </button>
+                <div className="divider"></div>
+                <button onClick={handlePrev} disabled={currentIndex <= 0}>
+                    Prev
+                </button>
+                <button onClick={handleNext} disabled={currentIndex >= filesList.length - 1}>
+                    Next
+                </button>
+                <button onClick={handleAddModel} disabled={isUploading} title="Add 3D Model">
+                    <AddModelIcon /> Add Model
+                </button>
+                <button onClick={handleDeleteModel} disabled={isDeleting || filesList.length === 0} title="Delete Current Model">
+                    <DeleteModelIcon /> Delete Model
+                </button>
+                <div className="divider"></div>
+                <button onClick={handleZoomOut}>- Zoom</button>
+                <button onClick={handleZoomIn}>+ Zoom</button>
+                <span className="img-count">
+                    {currentIndex + 1} / {filesList.length}
+                </span>
+            </div>
+
+            <div className="annotate-main">
+                {/* Tools Sidebar */}
+                <div className="tools-sidebar">
+                    <div className="sidebar-section">
+                        <h3><ToolsIcon /> Tools</h3>
+                        <div className="tool-grid">
+                            <div
+                                className={`tool-button ${selectedTool === 'move' ? 'active' : ''}`}
+                                onClick={() => setSelectedTool('move')}
+                                title="Move Tool (M)"
+                            >
+                                <div className="tool-icon"><MoveIcon /></div>
+                                <div className="tool-name">Move</div>
+                                <div className="keyboard-hint">M</div>
+                            </div>
+                            <div
+                                className={`tool-button ${selectedTool === 'cuboid' ? 'active' : ''}`}
+                                onClick={() => setSelectedTool('cuboid')}
+                                title="Cuboid Tool (C) - Coming Soon"
+                            >
+                                <div className="tool-icon"><CuboidIcon /></div>
+                                <div className="tool-name">Cuboid</div>
+                                <div className="keyboard-hint">C</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="sidebar-section">
+                        <h3><PaletteIcon /> Active Label</h3>
+                        <div className="label-selection">
+                            <select
+                                value={selectedLabelClass}
+                                onChange={(e) => setSelectedLabelClass(e.target.value)}
+                            >
+                                {localLabelClasses.map((lc, i) => (
+                                    <option key={i} value={lc.name}>
+                                        {lc.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <button onClick={() => setShowAddLabelModal(true)}>
+                                <PlusIcon /> Add Label
+                            </button>
+                        </div>
+                        <div className="label-preview">
+                            <div
+                                className="label-color"
+                                style={{ backgroundColor: activeLabelColor }}
+                            ></div>
+                            <span>Current Label: {selectedLabelClass}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Canvas */}
+                <div className="canvas-area" ref={canvasAreaRef}>
+                    {currentFileUrl ? (
+                        <>
+                            <ThreeDCanvas
+                                fileUrl={currentFileUrl}
+                                annotations={currentShapes}
+                                onAnnotationsChange={handleAnnotationsChange}
+                                selectedTool={selectedTool}
+                                scale={scale}
+                                onWheelZoom={handleWheelZoom}
+                                activeLabelColor={activeLabelColor}
+                                onFinishShape={handleFinishShape}
+                                onDeleteAnnotation={handleDeleteAnnotation}
+                                activeLabel={selectedLabelClass}
+                                labelClasses={localLabelClasses}
+                                initialPosition={modelPosition}
+                                externalSelectedIndex={selectedAnnotationIndex}
+                                onSelectAnnotation={setSelectedAnnotationIndex}
+                            />
+                            {showHelperText && (
+                                <div className="canvas-helper visible" ref={canvasHelperRef}>
+                                    {helperText}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div style={{ textAlign: 'center', margin: 'auto', padding: '40px' }}>
+                            No 3D models found
+                        </div>
+                    )}
+                </div>
+
+                <AnnotationListSidebar
+                    annotations={currentShapes}
+                    onDeleteAnnotation={handleDeleteAnnotation}
+                    onUpdateAnnotation={handleUpdateAnnotation}
+                    labelClasses={localLabelClasses}
+                    selectedAnnotationIndex={selectedAnnotationIndex}
+                    setSelectedAnnotationIndex={setSelectedAnnotationIndex}
+                    currentShapes={currentShapes}
+                    onUpdateAllAnnotations={handleUpdateAllAnnotations}
+                />
+            </div>
+
+            {/* Add Label Modal */}
+            {showAddLabelModal && (
+                <div className="modal-backdrop">
+                    <div className="modal">
+                        <h3>Add New Label</h3>
+                        <div>
+                            <input
+                                type="text"
+                                placeholder="Label Name"
+                                value={newLabelName}
+                                onChange={(e) => setNewLabelName(e.target.value)}
+                            />
+                        </div>
+                        <div className="color-palette">
+                            {CANDIDATE_COLORS.map((color, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`color-option ${newLabelColor === color ? 'selected' : ''}`}
+                                    style={{ backgroundColor: color }}
+                                    onClick={() => setNewLabelColor(color)}
+                                />
+                            ))}
+                        </div>
+                        <div>
+                            <input
+                                type="color"
+                                value={newLabelColor}
+                                onChange={(e) => setNewLabelColor(e.target.value)}
+                            />
+                        </div>
+                        <div className="modal-footer">
+                            <button onClick={handleAddNewLabel} className="primary">
+                                Add
+                            </button>
+                            <button onClick={() => setShowAddLabelModal(false)} className="secondary">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation modal for deleting models */}
+            {showConfirmDeleteModal && (
+                <div className="modal-backdrop">
+                    <div className="modal">
+                        <h3>Confirm Delete</h3>
+                        <p>Are you sure you want to delete this 3D model? This action cannot be undone.</p>
+                        <div className="modal-footer">
+                            <button onClick={confirmDeleteModel} className="primary" disabled={isDeleting}>
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                            <button onClick={() => setShowConfirmDeleteModal(false)} className="secondary">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}"
+
+3D.css:
+":root {
+    --primary-color: #2C3E50;
+    --secondary-color: #ecf0f1;
+    --accent-color: #3498db;
+    --accent-hover: #2980b9;
+    --success-color: #2ecc71;
+    --danger-color: #e74c3c;
+    --warning-color: #f1c40f;
+    --background-color: #f7f9fc;
+    --text-color: #333;
+    --sidebar-bg: #34495e;
+    --sidebar-text: #ecf0f1;
+    --border-color: #dcdfe6;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+    --transition: all 0.3s ease;
+}
+
+.annotate-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--background-color);
+    font-family: 'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
+    color: var(--text-color);
+    overflow: hidden;
+}
+
+.annotate-actions {
+    padding: 10px 16px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    z-index: 5;
+}
+
+.annotate-actions button {
+    padding: 8px 14px;
+    background: #fff;
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition);
+}
+
+.annotate-actions button:hover {
+    background: #f8f9fa;
+    border-color: #ccd0d4;
+}
+
+.annotate-actions button:active {
+    transform: translateY(1px);
+}
+
+.annotate-actions button.primary {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.annotate-actions button.primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+.annotate-actions button.success {
+    background: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+
+.annotate-actions button.success:hover {
+    background: #27ae60;
+    border-color: #27ae60;
+}
+
+.annotate-actions .divider {
+    height: 24px;
+    width: 1px;
+    background: var(--border-color);
+    margin: 0 5px;
+}
+
+.annotate-main {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+}
+
+.tools-sidebar {
+    width: 280px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    padding: 20px;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.sidebar-section {
+    margin-bottom: 24px;
+}
+
+.tools-sidebar h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tools-sidebar h3 svg {
+    width: 18px;
+    height: 18px;
+}
+
+.tools-sidebar .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.tools-sidebar .tool-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tools-sidebar .tool-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tools-sidebar .tool-button.active {
+    background: rgba(52, 152, 219, 0.3);
+    border-color: rgba(52, 152, 219, 0.5);
+}
+
+.tools-sidebar .tool-button .tool-icon {
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+}
+
+.tools-sidebar .tool-button .tool-name {
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.tools-sidebar .keyboard-hint {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-top: 3px;
+}
+
+.label-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.label-selection select {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.label-selection select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+.label-selection button {
+    padding: 8px 14px;
+    background: rgba(52, 152, 219, 0.3);
+    border: 1px solid rgba(52, 152, 219, 0.5);
+    color: white;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.label-selection button:hover {
+    background: rgba(52, 152, 219, 0.5);
+}
+
+.label-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+.label-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+}
+
+.canvas-area {
+    flex: 1;
+    background: #fff;
+    position: relative;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.canvas-helper {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: rgba(44, 62, 80, 0.85);
+    color: white;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.canvas-helper.visible {
+    opacity: 1;
+}
+
+/* Modal styling */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #fff;
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    min-width: 350px;
+    max-width: 90%;
+    box-shadow: var(--shadow-lg);
+    animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal h3 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    margin-bottom: 16px;
+}
+
+.modal input[type="text"],
+.modal input[type="number"],
+.modal input[type="color"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+}
+
+.modal input[type="color"] {
+    height: 40px;
+    padding: 2px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.modal-footer button {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-footer button.primary {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+}
+
+.modal-footer button.primary:hover {
+    background: var(--accent-hover);
+}
+
+.modal-footer button.secondary {
+    background: white;
+    color: var(--primary-color);
+    border: 1px solid var(--border-color);
+}
+
+.modal-footer button.secondary:hover {
+    background: #f8f9fa;
+}
+
+.color-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.color-option {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.color-option:hover {
+    transform: scale(1.1);
+}
+
+.color-option.selected {
+    border-color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+/* 3D specific styles */
+.model-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.model-placeholder {
+    background: rgba(44, 62, 80, 0.05);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    max-width: 400px;
+}
+
+.model-placeholder h3 {
+    color: var(--primary-color);
+    margin-top: 0;
+}
+
+.model-type {
+    display: inline-block;
+    background: var(--accent-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin: 10px 0;
+    font-size: 0.9rem;
+}
+
+.model-controls {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.model-controls button {
+    background: var(--sidebar-bg);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .tools-sidebar {
+        width: 220px;
+        padding: 15px;
+    }
+
+    .annotate-actions button {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .annotate-main {
+        flex-direction: column;
+    }
+
+    .tools-sidebar {
+        width: 100%;
+        max-height: 180px;
+    }
+
+    .tools-sidebar h3 {
+        margin-bottom: 8px;
+    }
+
+    .tools-sidebar .tool-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}"
+
+3DCanvas.js:
+"import React, { useEffect, useRef, useState } from 'react';
+import {
+    Stage,
+    Layer,
+    Group,
+    Image as KonvaImage,
+    Rect,
+} from 'react-konva';
+import * as THREE from 'three';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import './3DCanvas.css';
+
+export default function ThreeDCanvas({
+    fileUrl,
+    annotations,
+    onAnnotationsChange,
+    selectedTool,
+    scale,
+    onWheelZoom,
+    activeLabelColor,
+    labelClasses,
+    onFinishShape,
+    onDeleteAnnotation,
+    activeLabel,
+    initialPosition,
+    externalSelectedIndex,
+    onSelectAnnotation,
+}) {
+    const stageRef = useRef(null);
+    const containerRef = useRef(null);
+
+    const [dims, setDims] = useState({ width: 0, height: 0 });
+    const [modelImg, setModelImg] = useState(null);
+    const [imgDims, setImgDims] = useState({ width: 0, height: 0 });
+    const [imageLoaded, setImageLoaded] = useState(false);
+
+    // Master group offset (image panning)
+    const [imagePos, setImagePos] = useState(initialPosition || { x: 0, y: 0 });
+
+    // For selecting shape to transform
+    const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
+    const transformerRef = useRef(null);
+
+    // Cursor style for annotation
+    const crosshairCursor = `url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><line x1="50" y1="10" x2="50" y2="45" stroke="black" stroke-width="2"/><line x1="50" y1="55" x2="50" y2="90" stroke="black" stroke-width="2"/><line x1="10" y1="50" x2="45" y2="50" stroke="black" stroke-width="2"/><line x1="55" y1="50" x2="90" y2="50" stroke="black" stroke-width="2"/><circle cx="50" cy="50" r="1" fill="black"/></svg>') 50 50, crosshair`;
+
+    const threeContainerRef = useRef(null);
+    const rendererRef = useRef(null);
+    const sceneRef = useRef(null);
+    const cameraRef = useRef(null);
+    const controlsRef = useRef(null);
+    const modelRef = useRef(null);
+    const animationFrameRef = useRef(null);
+
+    const [useThreeRenderer, setUseThreeRenderer] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    // Synchronize the internal state with the external one
+    useEffect(() => {
+        setSelectedAnnotationIndex(externalSelectedIndex);
+    }, [externalSelectedIndex]);
+
+    // ----------- Window / container sizing -----------
+    useEffect(() => {
+        const handleResize = () => {
+            if (!containerRef.current) return;
+            setDims({
+                width: containerRef.current.offsetWidth,
+                height: containerRef.current.offsetHeight,
+            });
+        };
+        window.addEventListener('resize', handleResize);
+        handleResize();
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // ----------- Load 3D model or preview image -----------
+    useEffect(() => {
+        if (!fileUrl) return;
+
+        const extension = fileUrl.split('.').pop().toLowerCase();
+        // List of formats we support with Three.js
+        const threeSupportedFormats = ['obj', 'gltf', 'glb', 'stl', 'ply', 'fbx'];
+
+        if (threeSupportedFormats.includes(extension)) {
+            setUseThreeRenderer(true);
+        } else {
+            setUseThreeRenderer(false);
+        }
+    }, [fileUrl]);
+
+    // Apply custom initial position when provided or center on resize
+    useEffect(() => {
+        if (initialPosition && (initialPosition.x !== 0 || initialPosition.y !== 0)) {
+            setImagePos(initialPosition);
+        } else if (imageLoaded && modelImg && dims.width && dims.height) {
+            // Center image
+            const xPos = Math.max(0, (dims.width - imgDims.width) / 2);
+            const yPos = Math.max(0, (dims.height - imgDims.height) / 2);
+            setImagePos({ x: xPos, y: yPos });
+        }
+    }, [initialPosition, imageLoaded, modelImg, dims, imgDims]);
+
+    //Three.js initialization 
+    // Initialize Three.js scene for 3D model rendering
+    useEffect(() => {
+        // Make sure threeContainerRef exists and we should use Three.js renderer
+        if (!threeContainerRef.current || !useThreeRenderer) return;
+
+        // Clear any existing content
+        while (threeContainerRef.current.firstChild) {
+            threeContainerRef.current.removeChild(threeContainerRef.current.firstChild);
+        }
+
+        // Create scene with white background like 3dviewer.net
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff); // White background
+        sceneRef.current = scene;
+
+        // Better lighting setup similar to 3dviewer.net
+        // Main light from top-right
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        mainLight.position.set(10, 10, 10);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+
+        // Fill light from left
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        fillLight.position.set(-10, 5, -10);
+        scene.add(fillLight);
+
+        // Bottom light for soft shadows
+        const bottomLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        bottomLight.position.set(0, -10, 0);
+        scene.add(bottomLight);
+
+        // Ambient light for general illumination
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        // Add axes helper for reference
+        const axesHelper = new THREE.AxesHelper(2);
+        scene.add(axesHelper);
+
+        // Add a grid helper for reference
+        const gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0xcccccc);
+        gridHelper.position.y = -0.5;
+        scene.add(gridHelper);
+
+        // Create camera
+        const width = threeContainerRef.current.offsetWidth;
+        const height = threeContainerRef.current.offsetHeight;
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(5, 3, 5);
+        camera.lookAt(0, 0, 0);
+        cameraRef.current = camera;
+
+        // Setup renderer with shadows
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+        renderer.setSize(width, height);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        // Use sRGBEncoding if available (depends on Three.js version)
+        // Handle color output encoding based on Three.js version
+        if (THREE.ColorManagement) {
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+        }
+
+        threeContainerRef.current.appendChild(renderer.domElement);
+        rendererRef.current = renderer;
+
+        // Add OrbitControls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.1;
+        controls.rotateSpeed = 0.7;
+        controls.zoomSpeed = 1.2;
+        controls.minDistance = 2;
+        controls.maxDistance = 20;
+        controls.enablePan = true;
+        controls.target.set(0, 0, 0);
+        controls.update();
+        controlsRef.current = controls;
+
+        // Animation loop
+        const animate = () => {
+            animationFrameRef.current = requestAnimationFrame(animate);
+            if (controlsRef.current) {
+                controlsRef.current.update();
+            }
+            if (rendererRef.current && sceneRef.current && cameraRef.current) {
+                rendererRef.current.render(sceneRef.current, cameraRef.current);
+            }
+        };
+
+        animate();
+
+        // Cleanup
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+
+            if (rendererRef.current && threeContainerRef.current) {
+                threeContainerRef.current.removeChild(rendererRef.current.domElement);
+            }
+
+            if (sceneRef.current) {
+                sceneRef.current.clear();
+            }
+
+            // Clear references
+            rendererRef.current = null;
+            sceneRef.current = null;
+            cameraRef.current = null;
+            controlsRef.current = null;
+            modelRef.current = null;
+        };
+    }, [useThreeRenderer]);
+
+    //3D model loading code
+    useEffect(() => {
+        if (!fileUrl || !sceneRef.current || !useThreeRenderer) return;
+
+        setIsLoading(true);
+        const extension = fileUrl.split('.').pop().toLowerCase();
+
+        // Clear any previous model
+        if (modelRef.current) {
+            sceneRef.current.remove(modelRef.current);
+        }
+
+        // Load based on file type with appropriate loader
+        try {
+            switch (extension) {
+                case 'obj':
+                    const objLoader = new OBJLoader();
+
+                    console.log("File URL:", fileUrl);
+                    console.log("File extension:", getFileExtension(fileUrl));
+                    console.log("Three.js container dimensions:", threeContainerRef.current?.offsetWidth, threeContainerRef.current?.offsetHeight);
+
+                    objLoader.load(fileUrl,
+                        (object) => {
+                            console.log("Model loaded:", object);
+
+                            // Apply better materials to all meshes
+                            object.traverse(function (child) {
+                                if (child instanceof THREE.Mesh) {
+                                    // Create a better material that works well with lighting
+                                    child.material = new THREE.MeshStandardMaterial({
+                                        color: 0xcccccc, // Light gray like in 3dviewer.net
+                                        metalness: 0.2,
+                                        roughness: 0.5,
+                                        side: THREE.DoubleSide
+                                    });
+
+                                    // Enable shadows
+                                    child.castShadow = true;
+                                    child.receiveShadow = true;
+                                }
+                            });
+
+                            // Get the bounding box
+                            const box = new THREE.Box3().setFromObject(object);
+                            const size = box.getSize(new THREE.Vector3());
+                            const center = box.getCenter(new THREE.Vector3());
+
+                            // Calculate appropriate scale to fit in view (like 3dviewer.net)
+                            const maxDim = Math.max(size.x, size.y, size.z);
+                            const scale = 5 / maxDim; // Smaller scale factor
+                            object.scale.set(scale, scale, scale);
+
+                            // Center object at origin
+                            object.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+
+                            // Add to scene
+                            sceneRef.current.add(object);
+                            modelRef.current = object;
+
+                            // Position camera to view model properly (further away)
+                            if (cameraRef.current && controlsRef.current) {
+                                // Position camera for a 3/4 view like in 3dviewer.net
+                                cameraRef.current.position.set(5, 3, 5);
+                                cameraRef.current.lookAt(0, 0, 0);
+                                controlsRef.current.target.set(0, 0, 0);
+                                controlsRef.current.update();
+                            }
+
+                            setIsLoading(false);
+                        },
+                        (xhr) => {
+                            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                        },
+                        (error) => {
+                            console.error(error);
+                            setError("Failed to load OBJ model");
+                            setIsLoading(false);
+                        }
+                    );
+                    break;
+                // Add other format loaders
+            }
+        } catch (err) {
+            setError("Error initializing loader");
+            setIsLoading(false);
+        }
+    }, [fileUrl, useThreeRenderer]);
+
+    // ----------- Relative pointer position -----------
+    function getGroupPos(evt) {
+        const group = stageRef.current?.findOne('#anno-group');
+        return group ? group.getRelativePointerPosition() : null;
+    }
+
+    // ----------- Wheel Zoom -----------
+    function handleWheel(evt) {
+        evt.evt.preventDefault();
+        onWheelZoom(evt.evt.deltaY);
+    }
+
+    // ----------- Handle file extension -----------
+    const getFileExtension = (url) => {
+        return url.split('.').pop().toLowerCase();
+    };
+
+    // ----------- Render placeholder for unsupported 3D format -----------
+    const renderPlaceholder = () => {
+        return (
+            <div className="model-placeholder">
+                <div className="model-info">
+                    <h3>3D Model Viewer</h3>
+                    <p>Format: {fileUrl ? getFileExtension(fileUrl) : 'Unknown'}</p>
+                    <p>Full 3D viewer implementation coming soon</p>
+                </div>
+            </div>
+        );
+    };
+
+    // ----------- Mouse events -----------
+    function handleMouseDown(evt) {
+        // If click is not on an annotation and not in draw mode, deselect the current annotation
+        if (selectedTool === 'move' && evt.target.name() === 'background-image') {
+            onSelectAnnotation(null);
+        }
+    }
+
+    return (
+        <div className="canvas-container" ref={containerRef}>
+            {/* Original Konva renderer - only show when not using Three.js */}
+            {!useThreeRenderer && (
+                <Stage
+                    ref={stageRef}
+                    width={dims.width}
+                    height={dims.height}
+                    scaleX={scale}
+                    scaleY={scale}
+                    style={{
+                        background: '#dfe6e9',
+                        cursor: selectedTool === 'move' ? 'grab' : crosshairCursor
+                    }}
+                    onWheel={handleWheel}
+                    onMouseDown={handleMouseDown}
+                >
+                    <Layer>
+                        <Group
+                            id="anno-group"
+                            draggable={selectedTool === 'move'}
+                            x={imagePos.x}
+                            y={imagePos.y}
+                            onDragEnd={(e) => {
+                                setImagePos({ x: e.target.x(), y: e.target.y() });
+                            }}
+                        >
+                            {modelImg && (
+                                <KonvaImage
+                                    image={modelImg}
+                                    width={modelImg.width}
+                                    height={modelImg.height}
+                                    name="background-image"
+                                />
+                            )}
+                        </Group>
+                    </Layer>
+                </Stage>
+            )}
+
+            {/* Three.js container - only show when using Three.js */}
+            {useThreeRenderer && (
+                <div
+                    ref={threeContainerRef}
+                    className="three-container"
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        border: '2px solid red' // Temporary border to visualize the container
+                    }}
+                ></div>
+            )}
+
+            {/* Loading and error overlays */}
+            {isLoading && (
+                <div className="model-placeholder">
+                    <div className="model-info loading">
+                        <h3>Loading 3D Model...</h3>
+                        <div className="loading-spinner"></div>
+                    </div>
+                </div>
+            )}
+
+            {error && (
+                <div className="model-placeholder">
+                    <div className="model-info error">
+                        <h3>Error Loading Model</h3>
+                        <p>{error}</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}"
+
+3DCanvas.css:
+".three-d-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    overflow: hidden;
+}
+
+.model-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.model-info {
+    background: rgba(44, 62, 80, 0.85);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 10px;
+    text-align: center;
+    backdrop-filter: blur(5px);
+}
+
+.model-info.error {
+    background: rgba(217, 30, 24, 0.85);
+}
+
+.model-info.loading {
+    background: rgba(44, 62, 80, 0.7);
+}
+
+.model-info h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.model-info p {
+    margin: 5px 0;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto 0;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.format-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(44, 62, 80, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 5;
+}
+
+/* Annotation tools styles */
+.annotation-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    background: rgba(44, 62, 80, 0.8);
+    padding: 8px;
+    border-radius: 8px;
+    z-index: 5;
+}
+
+.annotation-controls button {
+    background: none;
+    border: none;
+    color: white;
+    margin: 0 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.annotation-controls button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.annotation-controls button.active {
+    background: rgba(52, 152, 219, 0.8);
+}
+
+/* 3D annotation indicators */
+.annotation-marker {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: red;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 5;
+}
+
+.annotation-label {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    transform: translate(-50%, -100%);
+    margin-top: -5px;
+    pointer-events: none;
+}
+
+/* Cuboid annotation overlay */
+.cuboid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.cuboid-drawing {
+    border: 2px solid rgba(52, 152, 219, 0.8);
+    background: rgba(52, 152, 219, 0.2);
+    position: absolute;
+}
+
+/* Cursor indicators */
+.three-d-container.cuboid-tool {
+    cursor: crosshair;
+}
+
+.three-d-container.move-tool {
+    cursor: grab;
+}
+
+.three-d-container.move-tool:active {
+    cursor: grabbing;
+}
+
+/* Add these to your existing 3DCanvas.css */
+
+.three-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto 0;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.model-info.error {
+    background: rgba(217, 30, 24, 0.85);
+}
+
+.model-info.loading {
+    background: rgba(44, 62, 80, 0.7);
+}
+
+.format-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(44, 62, 80, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 5;
+}"
+
+detection.js:
+"import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import HomeTopBar from '../components/HomeTopBar';
+import DetectionCanvas from '../components/DetectionCanvas';
+import AnnotationListSidebar from '../components/AnnotationListSidebar';
+import './Detection.css';
+
+// SVG Icon Components
+const UndoIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 14L4 9l5-5" />
+    <path d="M4 9h10c3 0 7 1 7 6v1" />
+  </svg>
+);
+
+const RedoIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 14l5-5-5-5" />
+    <path d="M20 9H10C7 9 3 10 3 15v1" />
+  </svg>
+);
+
+const SaveIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </svg>
+);
+
+const BackgroundIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <path d="M12 8v8" />
+    <path d="M8 12h8" />
+  </svg>
+);
+
+const MoveIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="5 9 2 12 5 15" />
+    <polyline points="9 5 12 2 15 5" />
+    <polyline points="15 19 12 22 9 19" />
+    <polyline points="19 9 22 12 19 15" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <line x1="12" y1="2" x2="12" y2="22" />
+  </svg>
+);
+
+const BboxIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+  </svg>
+);
+
+const PolygonIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3L3 12l4 8h10l4-8z" />
+  </svg>
+);
+
+const PolylineIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 7 9 13 13 9 21 17" />
+    <circle cx="3" cy="7" r="2" />
+    <circle cx="9" cy="13" r="2" />
+    <circle cx="13" cy="9" r="2" />
+    <circle cx="21" cy="17" r="2" />
+  </svg>
+);
+
+const PointIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EllipseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const PaletteIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="13.5" cy="6.5" r="2.5" />
+    <circle cx="17.5" cy="10.5" r="2.5" />
+    <circle cx="8.5" cy="7.5" r="2.5" />
+    <circle cx="6.5" cy="12.5" r="2.5" />
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.688h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+  </svg>
+);
+
+const ToolsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  </svg>
+);
+
+const CenterIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="16" />
+    <line x1="8" y1="12" x2="16" y2="12" />
+  </svg>
+);
+
+const AddImageIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+    <line x1="12" y1="9" x2="12" y2="15" />
+    <line x1="9" y1="12" x2="15" y2="12" />
+  </svg>
+);
+
+const DeleteImageIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+    <line x1="9" y1="9" x2="15" y2="15" />
+    <line x1="15" y1="9" x2="9" y2="15" />
+  </svg>
+);
+
+export default function Detection() {
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const folderInfo = state?.folderInfo;
+  const canvasHelperRef = useRef(null);
+  const canvasAreaRef = useRef(null);
+
+  // Add this near the top of your component
+  const fileInputRef = useRef(null);
+  const [filesList, setFilesList] = useState(() => {
+    return folderInfo?.files || [];
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
+
+  if (!folderInfo) {
+    return (
+      <div style={{ padding: 20 }}>
+        <h2>No folder info found. Please create a task first.</h2>
+        <button onClick={() => navigate('/')} className="primary">Go Home</button>
+      </div>
+    );
+  }
+
+  const { folderId, taskId, taskName, labelClasses, files } = folderInfo;
+
+  // -------------- Annotations for each image --------------
+  const [annotations, setAnnotations] = useState(() => {
+    if (folderInfo && folderInfo.annotations) {
+      return folderInfo.annotations;
+    }
+    return {};
+  });
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showHelperText, setShowHelperText] = useState(false);
+  const [helperText, setHelperText] = useState('');
+
+  // State for image initial positioning
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
+
+  // Tools: move, bbox, polygon, polyline, point, ellipse
+  const [selectedTool, setSelectedTool] = useState('move');
+
+  // Active label state – we now use a local labelClasses list for modification
+  const [selectedLabelClass, setSelectedLabelClass] = useState(
+    labelClasses[0]?.name || ''
+  );
+  const [localLabelClasses, setLocalLabelClasses] = useState(labelClasses);
+
+  const [scale, setScale] = useState(1.0);
+  const currentFileUrl = filesList[currentIndex]?.url;
+  const currentShapes = annotations[currentFileUrl] || [];
+
+  // New state for points‐limit modal for polygon, polyline, and point tools
+  const [showPointsLimitModal, setShowPointsLimitModal] = useState(false);
+  const [pointsLimitInput, setPointsLimitInput] = useState('');
+  const [pendingTool, setPendingTool] = useState('');
+  const [currentPointsLimit, setCurrentPointsLimit] = useState(0);
+
+  // State for selected annotation - simplified from original code
+  const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
+
+  // Whenever shapes change, store old state in undoStack
+  const handleAnnotationsChange = (newShapes) => {
+    const updated = {
+      ...annotations,
+      [currentFileUrl]: newShapes,
+    };
+    setUndoStack([...undoStack, annotations]);
+    setRedoStack([]);
+    setAnnotations(updated);
+  };
+
+  const handleUpdateAllAnnotations = (updatedAnnotations) => {
+    const updated = {
+      ...annotations,
+      [currentFileUrl]: updatedAnnotations,
+    };
+    setUndoStack([...undoStack, annotations]);
+    setRedoStack([]);
+    setAnnotations(updated);
+  };
+
+  // useEffect to reset selection on image change
+  useEffect(() => {
+    // Reset selectedAnnotationIndex when changing images
+    setSelectedAnnotationIndex(null);
+  }, [currentIndex, currentFileUrl]);
+
+  // shortcut for n/N to draw last drawn annotation
+  const [lastToolState, setLastToolState] = useState({
+    tool: null,
+    pointsLimit: 0
+  });
+
+  // Display helper text when tool is changed
+  useEffect(() => {
+    if (selectedTool === 'move') {
+      showHelper('Move and select objects (M)');
+    } else if (selectedTool === 'bbox') {
+      showHelper('Click and drag to create a bounding box (B)');
+    } else if (selectedTool === 'polygon') {
+      showHelper('Click to add points. Double-click to complete polygon (P)');
+    } else if (selectedTool === 'polyline') {
+      showHelper('Click to add points. Double-click to complete polyline (L)');
+    } else if (selectedTool === 'point') {
+      showHelper('Click to place points (O)');
+    } else if (selectedTool === 'ellipse') {
+      showHelper('Click and drag to create an ellipse (E)');
+    }
+  }, [selectedTool]);
+
+  // Calculate canvas dimensions
+  useEffect(() => {
+    if (canvasAreaRef.current) {
+      setCanvasDimensions({
+        width: canvasAreaRef.current.offsetWidth,
+        height: canvasAreaRef.current.offsetHeight
+      });
+    }
+  }, []);
+
+  // Handle clicking outside to deselect annotations
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // This handles clicks outside the sidebar and canvas
+      if (!event.target.closest('.anno-sidebar') &&
+        !event.target.closest('.canvas-area')) {
+        setSelectedAnnotationIndex(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const showHelper = (text) => {
+    setHelperText(text);
+    setShowHelperText(true);
+    if (canvasHelperRef.current) {
+      canvasHelperRef.current.classList.add('visible');
+    }
+
+    // Hide helper text after 3 seconds
+    setTimeout(() => {
+      if (canvasHelperRef.current) {
+        canvasHelperRef.current.classList.remove('visible');
+      }
+      setTimeout(() => setShowHelperText(false), 300);
+    }, 3000);
+  };
+
+  // Center the image manually
+  const handleCenterImage = () => {
+    if (currentFileUrl) {
+      const img = new Image();
+      img.src = currentFileUrl;
+      img.onload = () => {
+        if (canvasAreaRef.current) {
+          const canvasWidth = canvasAreaRef.current.offsetWidth;
+          const canvasHeight = canvasAreaRef.current.offsetHeight;
+
+          console.log("Canvas dimensions:", canvasWidth, canvasHeight);
+          console.log("Image dimensions:", img.width, img.height);
+
+          // Calculate position to center the image
+          const xPos = Math.max(0, (canvasWidth - img.width) / 2);
+          const yPos = Math.max(0, (canvasHeight - img.height) / 2);
+
+          console.log("New image position:", xPos, yPos);
+
+          // Set the position (with a minimum of 0 to avoid negative positioning)
+          setImagePosition({
+            x: Math.max(0, xPos),
+            y: Math.max(0, yPos)
+          });
+
+          showHelper('Image centered');
+        }
+      };
+    }
+  };
+
+  // -------------- Undo / Redo --------------
+  const undo = () => {
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    setRedoStack([...redoStack, annotations]);
+    setUndoStack(undoStack.slice(0, -1));
+    setAnnotations(prev);
+    showHelper('Undo successful');
+  };
+
+  const redo = () => {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setUndoStack([...undoStack, annotations]);
+    setRedoStack(redoStack.slice(0, -1));
+    setAnnotations(next);
+    showHelper('Redo successful');
+  };
+
+  // -------------- Deletion & Update --------------
+  const handleDeleteAnnotation = (index) => {
+    const arr = [...currentShapes];
+    arr.splice(index, 1);
+    handleAnnotationsChange(arr);
+    showHelper('Annotation deleted');
+
+    // Reset selected annotation if the deleted one was selected
+    if (selectedAnnotationIndex === index) {
+      setSelectedAnnotationIndex(null);
+    } else if (selectedAnnotationIndex > index) {
+      // Adjust selected index if it was after the deleted one
+      setSelectedAnnotationIndex(selectedAnnotationIndex - 1);
+    }
+  };
+
+  const handleUpdateAnnotation = (index, changes) => {
+    const arr = [...currentShapes];
+    arr[index] = { ...arr[index], ...changes };
+    handleAnnotationsChange(arr);
+  };
+
+  // -------------- Navigation --------------
+  const handlePrev = () => {
+    if (currentIndex > 0) setCurrentIndex((i) => i - 1);
+  };
+  const handleNext = () => {
+    if (currentIndex < files.length - 1) setCurrentIndex((i) => i + 1);
+  };
+
+  // -------------- Zoom --------------
+  const handleZoomIn = () => setScale((s) => Math.min(s + 0.1, 5));
+  const handleZoomOut = () => setScale((s) => Math.max(s - 0.1, 0.2));
+  const handleWheelZoom = (deltaY) => {
+    if (deltaY < 0) handleZoomIn();
+    else handleZoomOut();
+  };
+
+  // -------------- Save --------------
+  const handleSave = async () => {
+    setIsSaving(true);
+    const bodyData = {
+      folderId,
+      taskName,
+      labelClasses: localLabelClasses,
+      annotations,
+    };
+    try {
+      const res = await fetch('http://localhost:4000/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyData),
+      });
+      const data = await res.json();
+      showHelper('Annotations saved successfully');
+    } catch (err) {
+      console.error(err);
+      showHelper('Error saving annotations');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // -------------- Fill Background Button --------------
+  const handleFillBackground = () => {
+    if (!currentFileUrl) return;
+    const img = new window.Image();
+    img.src = currentFileUrl;
+    img.onload = () => {
+      const width = img.width;
+      const height = img.height;
+      const bgAnn = computeBackgroundPolygon(width, height, currentShapes, localLabelClasses);
+      // Remove any existing background annotation (by label)
+      const newShapes = currentShapes.filter(
+        (ann) => ann.label.toLowerCase() !== 'background'
+      );
+      newShapes.push(bgAnn);
+      handleAnnotationsChange(newShapes);
+      showHelper('Background filled');
+    };
+  };
+
+  function computeBackgroundPolygon(imageWidth, imageHeight, shapes, labelClasses) {
+    const outer = [
+      { x: 0, y: 0 },
+      { x: imageWidth, y: 0 },
+      { x: imageWidth, y: imageHeight },
+      { x: 0, y: imageHeight },
+    ];
+    const holes = [];
+    shapes.forEach((ann) => {
+      if (ann.type === 'bbox') {
+        const hole = [
+          { x: ann.x, y: ann.y },
+          { x: ann.x + ann.width, y: ann.y },
+          { x: ann.x + ann.width, y: ann.y + ann.height },
+          { x: ann.x, y: ann.y + ann.height },
+        ];
+        holes.push(hole);
+      } else if (ann.type === 'polygon') {
+        if (ann.label.toLowerCase() !== 'background') {
+          holes.push(ann.points);
+        }
+      } else if (ann.type === 'ellipse') {
+        const hole = [];
+        const numPoints = 20;
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (2 * Math.PI * i) / numPoints;
+          const x = ann.x + ann.radiusX * Math.cos(angle);
+          const y = ann.y + ann.radiusY * Math.sin(angle);
+          hole.push({ x, y });
+        }
+        holes.push(hole);
+      }
+    });
+    let bgColor = '#000000';
+    if (
+      labelClasses &&
+      labelClasses.some(
+        (lc) =>
+          lc.color.toLowerCase() === '#000000' &&
+          lc.name.toLowerCase() !== 'background'
+      )
+    ) {
+      bgColor = '#010101';
+    }
+    return {
+      type: 'polygon',
+      points: outer,
+      holes: holes,
+      label: 'background',
+      color: bgColor,
+      opacity: 0.5, // Default opacity for background
+    };
+  }
+
+  // -------------- Keyboard Shortcuts --------------
+  useEffect(() => {
+    const handleKey = (e) => {
+      const key = e.key;
+
+      if (key === 'm' || key === 'M') {
+        handleToolChange('move');
+      } else if (key === 'b' || key === 'B') {
+        handleToolChange('bbox');
+      } else if (key === 'p' || key === 'P') {
+        handleToolChange('polygon');
+      } else if (key === 'l' || key === 'L') {
+        handleToolChange('polyline');
+      } else if (key === 'o' || key === 'O') {
+        handleToolChange('point');
+      } else if (key === 'e' || key === 'E') {
+        handleToolChange('ellipse');
+      } else if ((key === 's' || key === 'S') && e.ctrlKey) {
+        e.preventDefault();
+        handleSave();
+      } else if (key === 'c' || key === 'C') {
+        handleCenterImage();
+      }
+
+      if (key === 'Escape') {
+        // Close open controls on Escape
+        if (selectedAnnotationIndex !== null) {
+          setSelectedAnnotationIndex(null);
+        } else {
+          const event = new CustomEvent('cancel-annotation');
+          window.dispatchEvent(event);
+        }
+      }
+      if (key === 'ArrowRight') {
+        handleNext();
+      }
+      if (key === 'ArrowLeft') {
+        handlePrev();
+      }
+      if (e.ctrlKey && (key === 'z' || key === 'Z')) {
+        e.preventDefault();
+        undo();
+      } else if (e.ctrlKey && (key === 'y' || key === 'Y')) {
+        e.preventDefault();
+        redo();
+      }
+
+      if (key === 'n' || key === 'N') {
+        if (lastToolState.tool) {
+          setCurrentPointsLimit(lastToolState.pointsLimit);
+          setSelectedTool(lastToolState.tool);
+          showHelper(`Resumed ${lastToolState.tool} tool`);
+        }
+      }
+
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [annotations, undoStack, redoStack, selectedAnnotationIndex]);
+
+  // -------------- Add Label Modal --------------
+  const [showAddLabelModal, setShowAddLabelModal] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#ff0000');
+
+  // Candidate colors for auto-selection
+  const CANDIDATE_COLORS = [
+    '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
+    '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
+    '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000',
+    '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
+  ];
+
+  // Helper: shadeColor (same as used elsewhere)
+  function shadeColor(col, amt) {
+    let usePound = false;
+    let color = col;
+    if (color[0] === '#') {
+      color = color.slice(1);
+      usePound = true;
+    }
+    let R = parseInt(color.substring(0, 2), 16);
+    let G = parseInt(color.substring(2, 4), 16);
+    let B = parseInt(color.substring(4, 6), 16);
+
+    R = Math.min(255, Math.max(0, R + amt));
+    G = Math.min(255, Math.max(0, G + amt));
+    B = Math.min(255, Math.max(0, B + amt));
+
+    const RR = R.toString(16).padStart(2, '0');
+    const GG = G.toString(16).padStart(2, '0');
+    const BB = B.toString(16).padStart(2, '0');
+
+    return (usePound ? '#' : '') + RR + GG + BB;
+  }
+
+  // Compute the next available color (checking both label colors and their instance variations)
+  function getNextAvailableColor() {
+    const usedColors = new Set();
+    const offsets = [0, -50, -100, -150, -200];
+    localLabelClasses.forEach((lc) => {
+      usedColors.add(lc.color.toLowerCase());
+      offsets.forEach((offset) => {
+        usedColors.add(shadeColor(lc.color, offset).toLowerCase());
+      });
+    });
+    for (let color of CANDIDATE_COLORS) {
+      if (!usedColors.has(color.toLowerCase())) {
+        return color;
+      }
+    }
+    return CANDIDATE_COLORS[0];
+  }
+
+  // When the add-label modal is opened, automatically select a new color
+  useEffect(() => {
+    if (showAddLabelModal) {
+      setNewLabelColor(getNextAvailableColor());
+    }
+  }, [showAddLabelModal, localLabelClasses]);
+
+  // Update the handleAddNewLabel function in Detection.js
+  const handleAddNewLabel = async () => {
+    if (!newLabelName.trim()) {
+      showHelper('Label name cannot be empty');
+      return;
+    }
+    const nameExists = localLabelClasses.some(
+      (lc) => lc.name.toLowerCase() === newLabelName.trim().toLowerCase()
+    );
+    if (nameExists) {
+      showHelper('Label already exists');
+      return;
+    }
+    const colorExists = localLabelClasses.some(
+      (lc) => lc.color.toLowerCase() === newLabelColor.trim().toLowerCase()
+    );
+    if (colorExists) {
+      showHelper('Label color already used. Please choose a different color.');
+      return;
+    }
+
+    const newLabel = { name: newLabelName.trim(), color: newLabelColor };
+    const updatedLabels = [...localLabelClasses, newLabel];
+
+    try {
+      // Update labels in tasks.csv
+      const updateLabelsRes = await fetch(`http://localhost:4000/api/tasks/${folderInfo.taskId}/labels`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ labelClasses: updatedLabels })
+      });
+
+      if (!updateLabelsRes.ok) {
+        throw new Error('Failed to update labels in task');
+      }
+
+      // Update annotations.json with new labels
+      const annotationsRes = await fetch('http://localhost:4000/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folderId: folderInfo.folderId,
+          taskName: taskName,
+          labelClasses: updatedLabels,
+          annotations: annotations
+        })
+      });
+
+      if (!annotationsRes.ok) {
+        throw new Error('Failed to update annotations');
+      }
+
+      // Update local state
+      setLocalLabelClasses(updatedLabels);
+      setSelectedLabelClass(newLabel.name);
+      setNewLabelName('');
+      setNewLabelColor('#ff0000');
+      setShowAddLabelModal(false);
+      showHelper(`Added new label: ${newLabel.name}`);
+    } catch (error) {
+      console.error('Error updating labels:', error);
+      showHelper('Failed to add new label: ' + error.message);
+    }
+  };
+
+  // -------------- When annotation finishes => switch to move --------------
+  // Modify handleFinishShape in both files to store the last tool state
+  const handleFinishShape = () => {
+    setLastToolState({
+      tool: selectedTool,
+      pointsLimit: currentPointsLimit
+    });
+    setSelectedTool('move');
+    setSelectedAnnotationIndex(null);
+    showHelper('Annotation completed');
+  };
+
+  // Function to handle tool changes so that for polygon, polyline, and point a modal is shown
+  const handleToolChange = (tool) => {
+    if (['polygon', 'polyline', 'point'].includes(tool)) {
+      setPendingTool(tool);
+      setShowPointsLimitModal(true);
+    } else {
+      setSelectedTool(tool);
+    }
+  };
+
+  // Get the current label color
+  const activeLabelColor = localLabelClasses.find(
+    (l) => l.name === selectedLabelClass
+  )?.color || '#ff0000';
+
+  // Add Image handler
+  const handleAddImage = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileSelect = async (e) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    setIsUploading(true);
+    showHelper('Uploading image(s)...');
+
+    const formData = new FormData();
+    // Add each file to the form data
+    for (let i = 0; i < selectedFiles.length; i++) {
+      formData.append('files', selectedFiles[i]);
+    }
+
+    // Make sure we're explicitly passing the folderId
+    console.log("Uploading to folder:", folderId);
+
+    try {
+      const response = await fetch(`http://localhost:4000/api/images/${folderId}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload images');
+      }
+
+      const result = await response.json();
+      console.log("Upload result:", result);
+
+      if (result.files && result.files.length > 0) {
+        // Create a new array with all existing files plus new ones
+        const newFilesList = [...filesList, ...result.files];
+        setFilesList(newFilesList);
+
+        // Navigate to the first new image
+        setCurrentIndex(filesList.length);
+
+        showHelper(`Added ${result.files.length} new image(s)`);
+      } else {
+        showHelper('No new images were added');
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      showHelper('Error uploading image(s): ' + error.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Delete Image handler
+  const handleDeleteImage = () => {
+    if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) {
+      showHelper('No image to delete');
+      return;
+    }
+
+    setShowConfirmDeleteModal(true);
+  };
+
+  const confirmDeleteImage = async () => {
+    if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) return;
+
+    const currentFile = filesList[currentIndex];
+    setIsDeleting(true);
+
+    try {
+      // Extract filename from URL
+      // URL format is typically: http://localhost:4000/uploads/FOLDER_ID/FILENAME
+      const urlParts = currentFile.url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+
+      const response = await fetch(`http://localhost:4000/api/images/${folderId}/${filename}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete image');
+      }
+
+      // Remove deleted file from the list
+      const updatedFiles = [...filesList];
+      updatedFiles.splice(currentIndex, 1);
+
+      // Remove annotations for this file
+      const updatedAnnotations = { ...annotations };
+      delete updatedAnnotations[currentFile.url];
+
+      // Update state
+      setFilesList(updatedFiles);
+      setAnnotations(updatedAnnotations);
+
+      // Adjust current index if needed
+      if (currentIndex >= updatedFiles.length && updatedFiles.length > 0) {
+        setCurrentIndex(updatedFiles.length - 1);
+      } else if (updatedFiles.length === 0) {
+        // Handle case when all images are deleted
+        setCurrentIndex(0);
+      }
+
+      showHelper('Image deleted successfully');
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      showHelper('Error deleting image');
+    } finally {
+      setIsDeleting(false);
+      setShowConfirmDeleteModal(false);
+    }
+  };
+
+  return (
+
+    <div className="annotate-container">
+
+      {/* Hidden file input for adding images */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+        accept="image/*"
+        multiple
+      />
+
+      <HomeTopBar
+        taskName={taskName}
+        showControls={true}
+        isSaving={isSaving}
+      />
+
+      <div className="annotate-actions">
+        <button onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)">
+          <UndoIcon /> Undo
+        </button>
+        <button onClick={redo} disabled={redoStack.length === 0} title="Redo (Ctrl+Y)">
+          <RedoIcon /> Redo
+        </button>
+        <div className="divider"></div>
+        <button onClick={handleSave} className="primary" disabled={isSaving} title="Save (Ctrl+S)">
+          <SaveIcon /> {isSaving ? 'Saving...' : 'Save'}
+        </button>
+        <button onClick={handleFillBackground} title="Fill Background">
+          <BackgroundIcon /> Background
+        </button>
+        <button onClick={handleCenterImage} title="Center Image (C)">
+          <CenterIcon /> Center
+        </button>
+        <div className="divider"></div>
+        <button onClick={handlePrev} disabled={currentIndex <= 0}>
+          Prev
+        </button>
+        <button onClick={handleNext} disabled={currentIndex >= files.length - 1}>
+          Next
+        </button>
+        {/* In the annotate-actions section, add these buttons after the Next button */}
+        <button onClick={handleAddImage} disabled={isUploading} title="Add Image">
+          <AddImageIcon /> Add Image
+        </button>
+        <button onClick={handleDeleteImage} disabled={isDeleting || filesList.length === 0} title="Delete Current Image">
+          <DeleteImageIcon /> Delete Image
+        </button>
+        <button onClick={() => setShowShortcuts(true)}>
+          Keyboard Shortcuts
+        </button>
+        <div className="divider"></div>
+        <button onClick={handleZoomOut}>- Zoom</button>
+        <button onClick={handleZoomIn}>+ Zoom</button>
+        <button onClick={() => { }}>Export</button>
+        <span className="img-count">
+          {currentIndex + 1} / {filesList.length}
+        </span>
+      </div>
+
+      <div className="annotate-main">
+        {/* Tools Sidebar */}
+        <div className="tools-sidebar">
+          <div className="sidebar-section">
+            <h3><ToolsIcon /> Tools</h3>
+            <div className="tool-grid">
+              <div
+                className={`tool-button ${selectedTool === 'move' ? 'active' : ''}`}
+                onClick={() => setSelectedTool('move')}
+                title="Move Tool (M)"
+              >
+                <div className="tool-icon"><MoveIcon /></div>
+                <div className="tool-name">Move</div>
+                <div className="keyboard-hint">M</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'bbox' ? 'active' : ''}`}
+                onClick={() => setSelectedTool('bbox')}
+                title="Bounding Box Tool (B)"
+              >
+                <div className="tool-icon"><BboxIcon /></div>
+                <div className="tool-name">BBox</div>
+                <div className="keyboard-hint">B</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'polygon' ? 'active' : ''}`}
+                onClick={() => handleToolChange('polygon')}
+                title="Polygon Tool (P)"
+              >
+                <div className="tool-icon"><PolygonIcon /></div>
+                <div className="tool-name">Polygon</div>
+                <div className="keyboard-hint">P</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'polyline' ? 'active' : ''}`}
+                onClick={() => handleToolChange('polyline')}
+                title="Polyline Tool (L)"
+              >
+                <div className="tool-icon"><PolylineIcon /></div>
+                <div className="tool-name">Polyline</div>
+                <div className="keyboard-hint">L</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'point' ? 'active' : ''}`}
+                onClick={() => handleToolChange('point')}
+                title="Point Tool (O)"
+              >
+                <div className="tool-icon"><PointIcon /></div>
+                <div className="tool-name">Point</div>
+                <div className="keyboard-hint">O</div>
+              </div>
+              <div
+                className={`tool-button ${selectedTool === 'ellipse' ? 'active' : ''}`}
+                onClick={() => setSelectedTool('ellipse')}
+                title="Ellipse Tool (E)"
+              >
+                <div className="tool-icon"><EllipseIcon /></div>
+                <div className="tool-name">Ellipse</div>
+                <div className="keyboard-hint">E</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h3><PaletteIcon /> Active Label</h3>
+            <div className="label-selection">
+              <select
+                value={selectedLabelClass}
+                onChange={(e) => setSelectedLabelClass(e.target.value)}
+              >
+                {localLabelClasses.map((lc, i) => (
+                  <option key={i} value={lc.name}>
+                    {lc.name}
+                  </option>
+                ))}
+              </select>
+              <button onClick={() => setShowAddLabelModal(true)}>
+                <PlusIcon /> Add Label
+              </button>
+            </div>
+            <div className="label-preview">
+              <div
+                className="label-color"
+                style={{ backgroundColor: activeLabelColor }}
+              ></div>
+              <span>Current Label: {selectedLabelClass}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Canvas */}
+        <div className="canvas-area" ref={canvasAreaRef}>
+          {currentFileUrl ? (
+            <>
+              <DetectionCanvas
+                fileUrl={currentFileUrl}
+                annotations={currentShapes}
+                onAnnotationsChange={handleAnnotationsChange}
+                selectedTool={selectedTool}
+                scale={scale}
+                onWheelZoom={handleWheelZoom}
+                activeLabelColor={activeLabelColor}
+                onFinishShape={handleFinishShape}
+                onDeleteAnnotation={handleDeleteAnnotation}
+                activeLabel={selectedLabelClass}
+                labelClasses={localLabelClasses}
+                pointsLimit={currentPointsLimit}
+                initialPosition={imagePosition}
+                externalSelectedIndex={selectedAnnotationIndex}
+                onSelectAnnotation={setSelectedAnnotationIndex}
+              />
+              {showHelperText && (
+                <div className="canvas-helper visible" ref={canvasHelperRef}>
+                  {helperText}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', margin: 'auto', padding: '40px' }}>
+              No images found
+            </div>
+          )}
+        </div>
+
+        <AnnotationListSidebar
+          annotations={currentShapes}
+          onDeleteAnnotation={handleDeleteAnnotation}
+          onUpdateAnnotation={handleUpdateAnnotation}
+          labelClasses={localLabelClasses}
+          selectedAnnotationIndex={selectedAnnotationIndex}
+          setSelectedAnnotationIndex={setSelectedAnnotationIndex}
+          currentShapes={currentShapes}
+          onUpdateAllAnnotations={handleUpdateAllAnnotations}
+        />
+      </div>
+
+      {/* Add Label Modal */}
+      {showAddLabelModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3>Add New Label</h3>
+            <div>
+              <input
+                type="text"
+                placeholder="Label Name"
+                value={newLabelName}
+                onChange={(e) => setNewLabelName(e.target.value)}
+              />
+            </div>
+            <div className="color-palette">
+              {CANDIDATE_COLORS.map((color, idx) => (
+                <div
+                  key={idx}
+                  className={`color-option ${newLabelColor === color ? 'selected' : ''}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setNewLabelColor(color)}
+                />
+              ))}
+            </div>
+            <div>
+              <input
+                type="color"
+                value={newLabelColor}
+                onChange={(e) => setNewLabelColor(e.target.value)}
+              />
+            </div>
+            <div className="modal-footer">
+              <button onClick={handleAddNewLabel} className="primary">
+                Add
+              </button>
+              <button onClick={() => setShowAddLabelModal(false)} className="secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Points Limit Modal */}
+      {showPointsLimitModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3>
+              {pendingTool.charAt(0).toUpperCase() + pendingTool.slice(1)} Annotation Points Limit
+            </h3>
+            <div>
+              <input
+                type="number"
+                placeholder="Number of points (0 for unlimited)"
+                value={pointsLimitInput}
+                onChange={(e) => setPointsLimitInput(e.target.value)}
+              />
+            </div>
+            <div className="modal-footer">
+              <button
+                className="primary"
+                onClick={() => {
+                  const limit = parseInt(pointsLimitInput);
+                  setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
+                  setSelectedTool(pendingTool);
+                  setShowPointsLimitModal(false);
+                  setPointsLimitInput('');
+                }}
+              >
+                Apply
+              </button>
+              <button
+                className="secondary"
+                onClick={() => {
+                  setShowPointsLimitModal(false);
+                  setPointsLimitInput('');
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add this at the bottom of your component, near other modals */}
+      {showConfirmDeleteModal && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete this image? This action cannot be undone.</p>
+            <div className="modal-footer">
+              <button onClick={confirmDeleteImage} className="primary" disabled={isDeleting}>
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+              <button onClick={() => setShowConfirmDeleteModal(false)} className="secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+};"
+
+detectioncanvas.js:
+""

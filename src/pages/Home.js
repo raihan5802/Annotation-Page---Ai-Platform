@@ -47,6 +47,14 @@ function Home() {
     });
   };
 
+  const handleGo3DAnnotation = () => {
+    handleNavigation('/images', {
+      segmentationMode: false,
+      classificationMode: false,
+      threeDMode: true
+    });
+  };
+
   return (
     <div className="home-container">
       <HomeTopBar />
@@ -87,6 +95,14 @@ function Home() {
                 <p>Assign labels to entire images rather than specific regions within the images.</p>
               </div>
               <button onClick={handleGoClassification}>Image Classification</button>
+            </div>
+            <div className="card">
+              <video src="/classification.mp4" autoPlay loop muted></video>
+              <div className="card-text">
+                <h3>3D Image Annotation</h3>
+                <p>Annotate 3D images with specialized tools for depth and volumetric data.</p>
+              </div>
+              <button onClick={handleGo3DAnnotation}>3D Image Annotation</button>
             </div>
           </div>
         </div>

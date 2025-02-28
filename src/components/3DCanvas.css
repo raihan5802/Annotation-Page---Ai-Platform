@@ -1,0 +1,213 @@
+.three-d-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    overflow: hidden;
+}
+
+.model-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.model-info {
+    background: rgba(44, 62, 80, 0.85);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 10px;
+    text-align: center;
+    backdrop-filter: blur(5px);
+}
+
+.model-info.error {
+    background: rgba(217, 30, 24, 0.85);
+}
+
+.model-info.loading {
+    background: rgba(44, 62, 80, 0.7);
+}
+
+.model-info h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.model-info p {
+    margin: 5px 0;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto 0;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.format-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(44, 62, 80, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 5;
+}
+
+/* Annotation tools styles */
+.annotation-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    background: rgba(44, 62, 80, 0.8);
+    padding: 8px;
+    border-radius: 8px;
+    z-index: 5;
+}
+
+.annotation-controls button {
+    background: none;
+    border: none;
+    color: white;
+    margin: 0 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.annotation-controls button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.annotation-controls button.active {
+    background: rgba(52, 152, 219, 0.8);
+}
+
+/* 3D annotation indicators */
+.annotation-marker {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: red;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 5;
+}
+
+.annotation-label {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+    transform: translate(-50%, -100%);
+    margin-top: -5px;
+    pointer-events: none;
+}
+
+/* Cuboid annotation overlay */
+.cuboid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.cuboid-drawing {
+    border: 2px solid rgba(52, 152, 219, 0.8);
+    background: rgba(52, 152, 219, 0.2);
+    position: absolute;
+}
+
+/* Cursor indicators */
+.three-d-container.cuboid-tool {
+    cursor: crosshair;
+}
+
+.three-d-container.move-tool {
+    cursor: grab;
+}
+
+.three-d-container.move-tool:active {
+    cursor: grabbing;
+}
+
+/* Add these to your existing 3DCanvas.css */
+
+.three-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto 0;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.model-info.error {
+    background: rgba(217, 30, 24, 0.85);
+}
+
+.model-info.loading {
+    background: rgba(44, 62, 80, 0.7);
+}
+
+.format-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(44, 62, 80, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 5;
+}
