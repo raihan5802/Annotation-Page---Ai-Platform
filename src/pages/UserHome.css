@@ -1,0 +1,10 @@
+/* src/pages/UserHome.css */
+.userhome-container {
+    width: 100%;
+    height: 100vh;
+}
+
+.userhome-content {
+    padding: 20px;
+    /* Additional layout styles */
+}

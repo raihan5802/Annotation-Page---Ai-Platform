@@ -1,0 +1,3 @@
+project_id,user_id,project_name,project_type,label_classes,folder_path,created_at
+377f20ec-124b-4a88-9c03-98086cb335b4,1740077374191,p1,Image Detection,[{"name":"p"|"color":"#e6194B"}],uploads/0b933611-9131-49df-aa20-b568b2bf5406,2025-03-13T13:14:59.335Z
+ffb3c7b4-d0b3-4d5c-9a4d-99ee0f0c78e3,1740077374191,p2,Image Detection,[{"name":"p"|"color":"#e6194B"}],uploads/df897317-5abf-4c6c-93f5-459b8d1da896,2025-03-13T13:26:27.827Z
