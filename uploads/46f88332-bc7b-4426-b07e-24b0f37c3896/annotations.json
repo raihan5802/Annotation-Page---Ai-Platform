@@ -1,0 +1,19 @@
+{
+  "taskName": "class task 1",
+  "labelClasses": [
+    {
+      "name": "c1",
+      "color": "#e6194B"
+    },
+    {
+      "name": "c2",
+      "color": "#ffe119"
+    }
+  ],
+  "annotations": {
+    "http://localhost:4000/uploads/46f88332-bc7b-4426-b07e-24b0f37c3896/roots/4k-ultra-hd-mustang-vcoontzbldwccn6z.jpg": "c1",
+    "http://localhost:4000/uploads/46f88332-bc7b-4426-b07e-24b0f37c3896/roots/715EbAQJL3L._AC_SL1500_.jpg": "c1",
+    "http://localhost:4000/uploads/46f88332-bc7b-4426-b07e-24b0f37c3896/roots/download.webp": "c1"
+  },
+  "lastUpdated": "2025-03-18T08:16:14.108Z"
+}

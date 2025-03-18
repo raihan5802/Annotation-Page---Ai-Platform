@@ -1,0 +1,94 @@
+{
+  "taskName": "t1",
+  "labelClasses": [
+    {
+      "name": "l1",
+      "color": "#e6194B"
+    },
+    {
+      "name": "l22",
+      "color": "#f032e6"
+    }
+  ],
+  "annotations": {
+    "http://localhost:4000/uploads/0c8c8990-844f-4c98-9a21-30fe04ec7fc3/test_imag3/Ultraviolette_F77_1640839007438_1640839053135.png": [
+      {
+        "type": "bbox",
+        "x": 482.5,
+        "y": 254.99999999999994,
+        "width": 500,
+        "height": 320,
+        "opacity": 0.88,
+        "label": "l1",
+        "color": "#e6194B"
+      }
+    ],
+    "http://localhost:4000/uploads/0c8c8990-844f-4c98-9a21-30fe04ec7fc3/test_imag3/WeThePeople20ArcadeBMXBike_3_5000x.webp": [
+      {
+        "type": "polygon",
+        "points": [
+          {
+            "x": 336,
+            "y": 211.3333282470703
+          },
+          {
+            "x": 340,
+            "y": 811.3333282470703
+          },
+          {
+            "x": 1054,
+            "y": 1019.3333282470703
+          },
+          {
+            "x": 1384,
+            "y": 647.3333282470703
+          },
+          {
+            "x": 948,
+            "y": 321.3333282470703
+          }
+        ],
+        "label": "l1",
+        "color": "#e6194B",
+        "opacity": 0.36
+      }
+    ],
+    "http://localhost:4000/uploads/0c8c8990-844f-4c98-9a21-30fe04ec7fc3/test_imag3/ultraviolettef77mach2_1728657011.webp": [
+      {
+        "type": "ellipse",
+        "x": 167.57154602933122,
+        "y": 108.9067146555247,
+        "radiusX": 132.5098272797195,
+        "radiusY": 83.09938320931572,
+        "rotation": 0,
+        "label": "l1",
+        "color": "#e6194B",
+        "opacity": 1
+      }
+    ],
+    "http://localhost:4000/uploads/0c8c8990-844f-4c98-9a21-30fe04ec7fc3/test_img/download.jpeg": [
+      {
+        "type": "bbox",
+        "x": 15.16425120772925,
+        "y": 37.62801821796202,
+        "width": 61.30434782608694,
+        "height": 46.95652173913041,
+        "opacity": 0.55,
+        "label": "l1",
+        "color": "#e6194B"
+      },
+      {
+        "type": "ellipse",
+        "x": 115.59903381642485,
+        "y": 105.88888778317937,
+        "radiusX": 35.217391304347785,
+        "radiusY": 30.434782608695656,
+        "rotation": 0,
+        "label": "l1",
+        "color": "#e6194B",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "lastUpdated": "2025-03-18T08:54:05.215Z"
+}

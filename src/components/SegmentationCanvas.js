@@ -949,360 +949,302 @@ export default function SegmentationCanvas({
 
     return (
         <div className="canvas-container" ref={containerRef}>
-            <Stage
-                ref={stageRef}
-                width={dims.width}
-                height={dims.height}
-                scaleX={scale}
-                scaleY={scale}
-                style={{
-                    background: '#dfe6e9',
-                    cursor: selectedTool === 'move' ? 'grab' : crosshairCursor
-                }}
-                onWheel={handleWheel}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onDblClick={handleDblClick}
-                onContextMenu={handleContextMenu}
-            >
-                <Layer>
-                    <Group
-                        id="anno-group"
-                        draggable={selectedTool === 'move'}
-                        x={imagePos.x}
-                        y={imagePos.y}
-                        onDragEnd={(e) => {
-                            setImagePos({ x: e.target.x(), y: e.target.y() });
-                        }}
-                    >
-                        {/* Background image */}
-                        {konvaImg && (
-                            <KonvaImage
-                                image={konvaImg}
-                                width={konvaImg.width}
-                                height={konvaImg.height}
-                                name="background-image"
-                            />
-                        )}
+            {dims.width > 0 && dims.height > 0 && konvaImg && konvaImg.width > 0 && konvaImg.height > 0 ? (
 
-                        {/* Render existing polygon annotations */}
-                        {annotations.map((ann, i) => {
-                            if (ann.type === 'polygon') {
-                                const annColor = ann.color || activeLabelColor || '#ff0000';
-                                const fillColor = annColor + '55';
-                                const opacity = ann.opacity !== undefined ? ann.opacity : 1.0; // Support opacity
+                <Stage
+                    ref={stageRef}
+                    width={dims.width}
+                    height={dims.height}
+                    scaleX={scale}
+                    scaleY={scale}
+                    style={{
+                        background: '#dfe6e9',
+                        cursor: selectedTool === 'move' ? 'grab' : crosshairCursor
+                    }}
+                    onWheel={handleWheel}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onDblClick={handleDblClick}
+                    onContextMenu={handleContextMenu}
+                >
+                    <Layer>
+                        <Group
+                            id="anno-group"
+                            draggable={selectedTool === 'move'}
+                            x={imagePos.x}
+                            y={imagePos.y}
+                            onDragEnd={(e) => {
+                                setImagePos({ x: e.target.x(), y: e.target.y() });
+                            }}
+                        >
+                            {/* Background image */}
+                            {konvaImg && (
+                                <KonvaImage
+                                    image={konvaImg}
+                                    width={konvaImg.width}
+                                    height={konvaImg.height}
+                                    name="background-image"
+                                />
+                            )}
 
-                                if (ann.holes && ann.holes.length > 0) {
-                                    const pathData = polygonToPath(ann.points, ann.holes);
-                                    return (
-                                        <React.Fragment key={i}>
-                                            <Group
-                                                draggable
-                                                onMouseDown={(e) => (e.cancelBubble = true)}
-                                                onDragEnd={(e) => {
-                                                    e.cancelBubble = true;
-                                                    handlePolygonDragEnd(i, e);
-                                                }}
-                                                onClick={(e) => {
-                                                    if (selectedTool === 'move') {
+                            {/* Render existing polygon annotations */}
+                            {annotations.map((ann, i) => {
+                                if (ann.type === 'polygon') {
+                                    const annColor = ann.color || activeLabelColor || '#ff0000';
+                                    const fillColor = annColor + '55';
+                                    const opacity = ann.opacity !== undefined ? ann.opacity : 1.0; // Support opacity
+
+                                    if (ann.holes && ann.holes.length > 0) {
+                                        const pathData = polygonToPath(ann.points, ann.holes);
+                                        return (
+                                            <React.Fragment key={i}>
+                                                <Group
+                                                    draggable
+                                                    onMouseDown={(e) => (e.cancelBubble = true)}
+                                                    onDragEnd={(e) => {
                                                         e.cancelBubble = true;
-                                                        onSelectAnnotation(i);
-                                                    }
-                                                }}
-                                            >
-                                                <Path
-                                                    data={pathData}
-                                                    fill={annColor}
-                                                    stroke={annColor}
-                                                    strokeWidth={2 / scale}
-                                                    fillRule="evenodd"
-                                                    opacity={opacity}
-                                                />
-                                                {ann.points.map((pt, idx) => (
-                                                    <Circle
-                                                        key={idx}
-                                                        x={pt.x}
-                                                        y={pt.y}
-                                                        radius={4 / scale}
-                                                        fill="#fff"
+                                                        handlePolygonDragEnd(i, e);
+                                                    }}
+                                                    onClick={(e) => {
+                                                        if (selectedTool === 'move') {
+                                                            e.cancelBubble = true;
+                                                            onSelectAnnotation(i);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Path
+                                                        data={pathData}
+                                                        fill={annColor}
                                                         stroke={annColor}
-                                                        strokeWidth={1 / scale}
+                                                        strokeWidth={2 / scale}
+                                                        fillRule="evenodd"
                                                         opacity={opacity}
-                                                        draggable
-                                                        onMouseDown={(ev) => (ev.cancelBubble = true)}
-                                                        onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
-                                                        onContextMenu={(ev) => {
-                                                            ev.evt.preventDefault();
-                                                            ev.cancelBubble = true;
-                                                            const updated = [...annotations];
-                                                            const shapePoints = [...ann.points];
-                                                            shapePoints.splice(idx, 1);
-                                                            if (shapePoints.length < 3) {
-                                                                updated.splice(i, 1);
-                                                            } else {
-                                                                updated[i] = { ...ann, points: shapePoints };
-                                                            }
-                                                            onAnnotationsChange(updated);
-                                                        }}
-                                                        onClick={(ev) => {
-                                                            ev.cancelBubble = true;
-                                                            const updated = [...annotations];
-                                                            const shapePoints = [...ann.points];
-                                                            const length = shapePoints.length;
-                                                            let nextIndex = (idx + 1) % length;
-                                                            const currentPt = shapePoints[idx];
-                                                            const nextPt = shapePoints[nextIndex];
-                                                            const midX = (currentPt.x + nextPt.x) / 2;
-                                                            const midY = (currentPt.y + nextPt.y) / 2;
-                                                            shapePoints.splice(idx + 1, 0, { x: midX, y: midY });
-                                                            updated[i] = { ...ann, points: shapePoints };
-                                                            onAnnotationsChange(updated);
-                                                        }}
                                                     />
-                                                ))}
-                                            </Group>
-                                            {ann.instanceId && (
-                                                <InstanceIdLabel
+                                                    {ann.points.map((pt, idx) => (
+                                                        <Circle
+                                                            key={idx}
+                                                            x={pt.x}
+                                                            y={pt.y}
+                                                            radius={4 / scale}
+                                                            fill="#fff"
+                                                            stroke={annColor}
+                                                            strokeWidth={1 / scale}
+                                                            opacity={opacity}
+                                                            draggable
+                                                            onMouseDown={(ev) => (ev.cancelBubble = true)}
+                                                            onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
+                                                            onContextMenu={(ev) => {
+                                                                ev.evt.preventDefault();
+                                                                ev.cancelBubble = true;
+                                                                const updated = [...annotations];
+                                                                const shapePoints = [...ann.points];
+                                                                shapePoints.splice(idx, 1);
+                                                                if (shapePoints.length < 3) {
+                                                                    updated.splice(i, 1);
+                                                                } else {
+                                                                    updated[i] = { ...ann, points: shapePoints };
+                                                                }
+                                                                onAnnotationsChange(updated);
+                                                            }}
+                                                            onClick={(ev) => {
+                                                                ev.cancelBubble = true;
+                                                                const updated = [...annotations];
+                                                                const shapePoints = [...ann.points];
+                                                                const length = shapePoints.length;
+                                                                let nextIndex = (idx + 1) % length;
+                                                                const currentPt = shapePoints[idx];
+                                                                const nextPt = shapePoints[nextIndex];
+                                                                const midX = (currentPt.x + nextPt.x) / 2;
+                                                                const midY = (currentPt.y + nextPt.y) / 2;
+                                                                shapePoints.splice(idx + 1, 0, { x: midX, y: midY });
+                                                                updated[i] = { ...ann, points: shapePoints };
+                                                                onAnnotationsChange(updated);
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </Group>
+                                                {ann.instanceId && (
+                                                    <InstanceIdLabel
+                                                        annotation={ann}
+                                                        scale={scale}
+                                                        shapeBoundingBox={shapeBoundingBox}
+                                                        color={annColor}
+                                                    />
+                                                )}
+                                                <DeleteLabel
                                                     annotation={ann}
                                                     scale={scale}
                                                     shapeBoundingBox={shapeBoundingBox}
+                                                    onDelete={() => onDeleteAnnotation(i)}
                                                     color={annColor}
                                                 />
-                                            )}
-                                            <DeleteLabel
-                                                annotation={ann}
-                                                scale={scale}
-                                                shapeBoundingBox={shapeBoundingBox}
-                                                onDelete={() => onDeleteAnnotation(i)}
-                                                color={annColor}
-                                            />
-                                        </React.Fragment>
-                                    );
-                                } else {
-                                    const pts = flattenPoints(ann.points);
-                                    const firstPt = ann.points[0];
-                                    const secondPt =
-                                        ann.points[1] || { x: firstPt.x + 10, y: firstPt.y };
-                                    return (
-                                        <React.Fragment key={i}>
-                                            <Group
-                                                draggable
-                                                onMouseDown={(e) => (e.cancelBubble = true)}
-                                                onDragEnd={(e) => {
-                                                    e.cancelBubble = true;
-                                                    handlePolygonDragEnd(i, e);
-                                                }}
-                                                onClick={(e) => {
-                                                    if (selectedTool === 'move') {
+                                            </React.Fragment>
+                                        );
+                                    } else {
+                                        const pts = flattenPoints(ann.points);
+                                        const firstPt = ann.points[0];
+                                        const secondPt =
+                                            ann.points[1] || { x: firstPt.x + 10, y: firstPt.y };
+                                        return (
+                                            <React.Fragment key={i}>
+                                                <Group
+                                                    draggable
+                                                    onMouseDown={(e) => (e.cancelBubble = true)}
+                                                    onDragEnd={(e) => {
                                                         e.cancelBubble = true;
-                                                        onSelectAnnotation(i);
-                                                    }
-                                                }}
-                                            >
+                                                        handlePolygonDragEnd(i, e);
+                                                    }}
+                                                    onClick={(e) => {
+                                                        if (selectedTool === 'move') {
+                                                            e.cancelBubble = true;
+                                                            onSelectAnnotation(i);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Line
+                                                        points={pts}
+                                                        fill={annColor}
+                                                        stroke={annColor}
+                                                        strokeWidth={2 / scale}
+                                                        opacity={opacity}
+                                                        closed
+                                                    />
+                                                    {ann.points.map((pt, idx) => (
+                                                        <Circle
+                                                            key={idx}
+                                                            x={pt.x}
+                                                            y={pt.y}
+                                                            radius={4 / scale}
+                                                            fill="#fff"
+                                                            stroke={annColor}
+                                                            strokeWidth={1 / scale}
+                                                            opacity={opacity}
+                                                            draggable
+                                                            onMouseDown={(ev) => (ev.cancelBubble = true)}
+                                                            onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
+                                                            onContextMenu={(ev) => {
+                                                                ev.evt.preventDefault();
+                                                                ev.cancelBubble = true;
+                                                                const updated = [...annotations];
+                                                                const shapePoints = [...ann.points];
+                                                                shapePoints.splice(idx, 1);
+                                                                if (shapePoints.length < 3) {
+                                                                    updated.splice(i, 1);
+                                                                } else {
+                                                                    updated[i] = { ...ann, points: shapePoints };
+                                                                }
+                                                                onAnnotationsChange(updated);
+                                                            }}
+                                                            onClick={(ev) => {
+                                                                ev.cancelBubble = true;
+                                                                const updated = [...annotations];
+                                                                const shapePoints = [...ann.points];
+                                                                const length = shapePoints.length;
+                                                                let nextIndex = (idx + 1) % length;
+                                                                const currentPt = shapePoints[idx];
+                                                                const nextPt = shapePoints[nextIndex];
+                                                                const midX = (currentPt.x + nextPt.x) / 2;
+                                                                const midY = (currentPt.y + nextPt.y) / 2;
+                                                                shapePoints.splice(idx + 1, 0, { x: midX, y: midY });
+                                                                updated[i] = { ...ann, points: shapePoints };
+                                                                onAnnotationsChange(updated);
+                                                            }}
+                                                        />
+                                                    ))}
+                                                    <Arrow
+                                                        points={[secondPt.x, secondPt.y, firstPt.x, firstPt.y]}
+                                                        fill={annColor}
+                                                        stroke={annColor}
+                                                        strokeWidth={2 / scale}
+                                                        opacity={opacity}
+                                                        pointerLength={10 / scale}
+                                                        pointerWidth={8 / scale}
+                                                    />
+                                                </Group>
+                                                {ann.instanceId && (
+                                                    <InstanceIdLabel
+                                                        annotation={ann}
+                                                        scale={scale}
+                                                        shapeBoundingBox={shapeBoundingBox}
+                                                        color={annColor}
+                                                    />
+                                                )}
+                                                <DeleteLabel
+                                                    annotation={ann}
+                                                    scale={scale}
+                                                    shapeBoundingBox={shapeBoundingBox}
+                                                    onDelete={() => onDeleteAnnotation(i)}
+                                                    color={annColor}
+                                                />
+                                            </React.Fragment>
+                                        );
+                                    }
+                                }
+                                return null;
+                            })}
+
+                            {/* Dynamic Preview of Point Reduction */}
+                            {showPointReductionPanel && (
+                                <>
+                                    {/* Use currentAnnotationPoints if preview is enabled, otherwise use originalPoints */}
+                                    {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).length > 1 && (
+                                        <Line
+                                            points={flattenPoints([
+                                                ...(isShowingReducedPreview ? currentAnnotationPoints : originalPoints),
+                                                (isShowingReducedPreview ? currentAnnotationPoints : originalPoints)[0]
+                                            ])}
+                                            fill={activeLabelColor + '55'}
+                                            stroke={activeLabelColor}
+                                            strokeWidth={2 / scale}
+                                            closed
+                                        />
+                                    )}
+                                    {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).map((pt, idx) => (
+                                        <Circle
+                                            key={idx}
+                                            x={pt.x}
+                                            y={pt.y}
+                                            radius={4 / scale}
+                                            fill="#fff"
+                                            stroke={activeLabelColor}
+                                            strokeWidth={1 / scale}
+                                        />
+                                    ))}
+                                </>
+                            )}
+
+                            {/* When not in point reduction mode, show original in-progress shapes */}
+                            {!showPointReductionPanel && (
+                                <>
+                                    {/* In-progress Polygon */}
+                                    {drawingPolygon && selectedTool === 'polygon' && (
+                                        <>
+                                            {tempPoints.length > 1 && (
                                                 <Line
-                                                    points={pts}
-                                                    fill={annColor}
-                                                    stroke={annColor}
+                                                    points={flattenPoints([...tempPoints, tempPoints[0]])}
+                                                    fill={activeLabelColor + '55'}
+                                                    stroke={activeLabelColor}
                                                     strokeWidth={2 / scale}
-                                                    opacity={opacity}
                                                     closed
                                                 />
-                                                {ann.points.map((pt, idx) => (
-                                                    <Circle
-                                                        key={idx}
-                                                        x={pt.x}
-                                                        y={pt.y}
-                                                        radius={4 / scale}
-                                                        fill="#fff"
-                                                        stroke={annColor}
-                                                        strokeWidth={1 / scale}
-                                                        opacity={opacity}
-                                                        draggable
-                                                        onMouseDown={(ev) => (ev.cancelBubble = true)}
-                                                        onDragEnd={(ev) => handleVertexDragEnd(i, idx, ev)}
-                                                        onContextMenu={(ev) => {
-                                                            ev.evt.preventDefault();
-                                                            ev.cancelBubble = true;
-                                                            const updated = [...annotations];
-                                                            const shapePoints = [...ann.points];
-                                                            shapePoints.splice(idx, 1);
-                                                            if (shapePoints.length < 3) {
-                                                                updated.splice(i, 1);
-                                                            } else {
-                                                                updated[i] = { ...ann, points: shapePoints };
-                                                            }
-                                                            onAnnotationsChange(updated);
-                                                        }}
-                                                        onClick={(ev) => {
-                                                            ev.cancelBubble = true;
-                                                            const updated = [...annotations];
-                                                            const shapePoints = [...ann.points];
-                                                            const length = shapePoints.length;
-                                                            let nextIndex = (idx + 1) % length;
-                                                            const currentPt = shapePoints[idx];
-                                                            const nextPt = shapePoints[nextIndex];
-                                                            const midX = (currentPt.x + nextPt.x) / 2;
-                                                            const midY = (currentPt.y + nextPt.y) / 2;
-                                                            shapePoints.splice(idx + 1, 0, { x: midX, y: midY });
-                                                            updated[i] = { ...ann, points: shapePoints };
-                                                            onAnnotationsChange(updated);
-                                                        }}
-                                                    />
-                                                ))}
-                                                <Arrow
-                                                    points={[secondPt.x, secondPt.y, firstPt.x, firstPt.y]}
-                                                    fill={annColor}
-                                                    stroke={annColor}
-                                                    strokeWidth={2 / scale}
-                                                    opacity={opacity}
-                                                    pointerLength={10 / scale}
-                                                    pointerWidth={8 / scale}
-                                                />
-                                            </Group>
-                                            {ann.instanceId && (
-                                                <InstanceIdLabel
-                                                    annotation={ann}
-                                                    scale={scale}
-                                                    shapeBoundingBox={shapeBoundingBox}
-                                                    color={annColor}
-                                                />
                                             )}
-                                            <DeleteLabel
-                                                annotation={ann}
-                                                scale={scale}
-                                                shapeBoundingBox={shapeBoundingBox}
-                                                onDelete={() => onDeleteAnnotation(i)}
-                                                color={annColor}
-                                            />
-                                        </React.Fragment>
-                                    );
-                                }
-                            }
-                            return null;
-                        })}
+                                            {tempPoints.map((pt, idx) => (
+                                                <Circle
+                                                    key={idx}
+                                                    x={pt.x}
+                                                    y={pt.y}
+                                                    radius={4 / scale}
+                                                    fill="#fff"
+                                                    stroke={activeLabelColor}
+                                                    strokeWidth={1 / scale}
+                                                />
+                                            ))}
+                                        </>
+                                    )}
 
-                        {/* Dynamic Preview of Point Reduction */}
-                        {showPointReductionPanel && (
-                            <>
-                                {/* Use currentAnnotationPoints if preview is enabled, otherwise use originalPoints */}
-                                {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).length > 1 && (
-                                    <Line
-                                        points={flattenPoints([
-                                            ...(isShowingReducedPreview ? currentAnnotationPoints : originalPoints),
-                                            (isShowingReducedPreview ? currentAnnotationPoints : originalPoints)[0]
-                                        ])}
-                                        fill={activeLabelColor + '55'}
-                                        stroke={activeLabelColor}
-                                        strokeWidth={2 / scale}
-                                        closed
-                                    />
-                                )}
-                                {(isShowingReducedPreview ? currentAnnotationPoints : originalPoints).map((pt, idx) => (
-                                    <Circle
-                                        key={idx}
-                                        x={pt.x}
-                                        y={pt.y}
-                                        radius={4 / scale}
-                                        fill="#fff"
-                                        stroke={activeLabelColor}
-                                        strokeWidth={1 / scale}
-                                    />
-                                ))}
-                            </>
-                        )}
-
-                        {/* When not in point reduction mode, show original in-progress shapes */}
-                        {!showPointReductionPanel && (
-                            <>
-                                {/* In-progress Polygon */}
-                                {drawingPolygon && selectedTool === 'polygon' && (
-                                    <>
-                                        {tempPoints.length > 1 && (
-                                            <Line
-                                                points={flattenPoints([...tempPoints, tempPoints[0]])}
-                                                fill={activeLabelColor + '55'}
-                                                stroke={activeLabelColor}
-                                                strokeWidth={2 / scale}
-                                                closed
-                                            />
-                                        )}
-                                        {tempPoints.map((pt, idx) => (
-                                            <Circle
-                                                key={idx}
-                                                x={pt.x}
-                                                y={pt.y}
-                                                radius={4 / scale}
-                                                fill="#fff"
-                                                stroke={activeLabelColor}
-                                                strokeWidth={1 / scale}
-                                            />
-                                        ))}
-                                    </>
-                                )}
-
-                                {/* In-progress Instance Segmentation Polygon */}
-                                {drawingInstancePolygon && selectedTool === 'instance' && (
-                                    <>
-                                        {tempInstancePoints.length > 1 && (
-                                            <Line
-                                                points={flattenPoints([
-                                                    ...tempInstancePoints,
-                                                    tempInstancePoints[0],
-                                                ])}
-                                                fill={activeLabelColor + '55'}
-                                                stroke={activeLabelColor}
-                                                strokeWidth={2 / scale}
-                                                closed
-                                            />
-                                        )}
-                                        {tempInstancePoints.map((pt, idx) => (
-                                            <Circle
-                                                key={idx}
-                                                x={pt.x}
-                                                y={pt.y}
-                                                radius={4 / scale}
-                                                fill="#fff"
-                                                stroke={activeLabelColor}
-                                                strokeWidth={1 / scale}
-                                            />
-                                        ))}
-                                    </>
-                                )}
-
-                                {/* In-progress Semantic Segmentation Polygon */}
-                                {drawingSemanticPolygon && selectedTool === 'semantic' && (
-                                    <>
-                                        {tempSemanticPoints.length > 1 && (
-                                            <Line
-                                                points={flattenPoints([
-                                                    ...tempSemanticPoints,
-                                                    tempSemanticPoints[0],
-                                                ])}
-                                                fill={activeLabelColor + '55'}
-                                                stroke={activeLabelColor}
-                                                strokeWidth={2 / scale}
-                                                closed
-                                            />
-                                        )}
-                                        {tempSemanticPoints.map((pt, idx) => (
-                                            <Circle
-                                                key={idx}
-                                                x={pt.x}
-                                                y={pt.y}
-                                                radius={4 / scale}
-                                                fill="#fff"
-                                                stroke={activeLabelColor}
-                                                strokeWidth={1 / scale}
-                                            />
-                                        ))}
-                                    </>
-                                )}
-
-                                {/* In-progress Panoptic Polygon for Instance */}
-                                {drawingInstancePolygon &&
-                                    selectedTool === 'panoptic' &&
-                                    panopticOption === 'instance' && (
+                                    {/* In-progress Instance Segmentation Polygon */}
+                                    {drawingInstancePolygon && selectedTool === 'instance' && (
                                         <>
                                             {tempInstancePoints.length > 1 && (
                                                 <Line
@@ -1330,10 +1272,8 @@ export default function SegmentationCanvas({
                                         </>
                                     )}
 
-                                {/* In-progress Panoptic Polygon for Semantic */}
-                                {drawingSemanticPolygon &&
-                                    selectedTool === 'panoptic' &&
-                                    panopticOption === 'semantic' && (
+                                    {/* In-progress Semantic Segmentation Polygon */}
+                                    {drawingSemanticPolygon && selectedTool === 'semantic' && (
                                         <>
                                             {tempSemanticPoints.length > 1 && (
                                                 <Line
@@ -1360,11 +1300,76 @@ export default function SegmentationCanvas({
                                             ))}
                                         </>
                                     )}
-                            </>
-                        )}
-                    </Group>
-                </Layer>
-            </Stage>
+
+                                    {/* In-progress Panoptic Polygon for Instance */}
+                                    {drawingInstancePolygon &&
+                                        selectedTool === 'panoptic' &&
+                                        panopticOption === 'instance' && (
+                                            <>
+                                                {tempInstancePoints.length > 1 && (
+                                                    <Line
+                                                        points={flattenPoints([
+                                                            ...tempInstancePoints,
+                                                            tempInstancePoints[0],
+                                                        ])}
+                                                        fill={activeLabelColor + '55'}
+                                                        stroke={activeLabelColor}
+                                                        strokeWidth={2 / scale}
+                                                        closed
+                                                    />
+                                                )}
+                                                {tempInstancePoints.map((pt, idx) => (
+                                                    <Circle
+                                                        key={idx}
+                                                        x={pt.x}
+                                                        y={pt.y}
+                                                        radius={4 / scale}
+                                                        fill="#fff"
+                                                        stroke={activeLabelColor}
+                                                        strokeWidth={1 / scale}
+                                                    />
+                                                ))}
+                                            </>
+                                        )}
+
+                                    {/* In-progress Panoptic Polygon for Semantic */}
+                                    {drawingSemanticPolygon &&
+                                        selectedTool === 'panoptic' &&
+                                        panopticOption === 'semantic' && (
+                                            <>
+                                                {tempSemanticPoints.length > 1 && (
+                                                    <Line
+                                                        points={flattenPoints([
+                                                            ...tempSemanticPoints,
+                                                            tempSemanticPoints[0],
+                                                        ])}
+                                                        fill={activeLabelColor + '55'}
+                                                        stroke={activeLabelColor}
+                                                        strokeWidth={2 / scale}
+                                                        closed
+                                                    />
+                                                )}
+                                                {tempSemanticPoints.map((pt, idx) => (
+                                                    <Circle
+                                                        key={idx}
+                                                        x={pt.x}
+                                                        y={pt.y}
+                                                        radius={4 / scale}
+                                                        fill="#fff"
+                                                        stroke={activeLabelColor}
+                                                        strokeWidth={1 / scale}
+                                                    />
+                                                ))}
+                                            </>
+                                        )}
+                                </>
+                            )}
+                        </Group>
+                    </Layer>
+                </Stage>
+            ) : (
+                <div>Loading image...</div>
+            )}
 
             {/* Point Reduction Panel */}
             {showPointReductionPanel && (

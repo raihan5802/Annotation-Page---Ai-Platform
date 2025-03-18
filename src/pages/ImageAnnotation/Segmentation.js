@@ -1,9 +1,10 @@
+// src/pages/Segmentation.js
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import HomeTopBar from '../components/HomeTopBar';
-import SegmentationCanvas from '../components/SegmentationCanvas';
-import AnnotationListSidebar from '../components/AnnotationListSidebar';
+import UserHomeTopBar from '../../components/UserHomeTopBar';
+import SegmentationCanvas from '../../components/SegmentationCanvas';
+import AnnotationListSidebar from '../../components/AnnotationListSidebar';
 import './Segmentation.css';
 
 // SVG Icon Components
@@ -115,143 +116,137 @@ const DeleteImageIcon = () => (
 export default function Segmentation() {
     const navigate = useNavigate();
     const { state } = useLocation();
-    const folderInfo = state?.folderInfo;
-    const canvasHelperRef = useRef(null);
-    const canvasAreaRef = useRef(null);
+    const taskId = state?.taskId;
 
-    // Added refs and state variables
-    const fileInputRef = useRef(null); // Reference for hidden file input
-    const [filesList, setFilesList] = useState(() => {
-        return folderInfo?.files || []; // Fixed initialization to avoid reference error
-    });
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
-    const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
+    // New states for task, project, and file management
+    const [taskData, setTaskData] = useState(null);
+    const [projectData, setProjectData] = useState(null);
+    const [filesList, setFilesList] = useState([]);
+    const [allFiles, setAllFiles] = useState([]);
+    const [taskFolderPaths, setTaskFolderPaths] = useState([]);
 
-    if (!folderInfo) {
-        return (
-            <div style={{ padding: 20 }}>
-                <h2>No folder info found. Please create a task first.</h2>
-                <button onClick={() => navigate('/')} className="primary">Go Home</button>
-            </div>
-        );
-    }
-
-    const { folderId, taskName, labelClasses, files } = folderInfo;
-
-    // -------------- Annotations for each image --------------
-    const [annotations, setAnnotations] = useState(() => {
-        if (folderInfo && folderInfo.annotations) {
-            return folderInfo.annotations;
-        }
-        return {};
-    });
+    // Annotation and UI states
+    const [annotations, setAnnotations] = useState({});
     const [undoStack, setUndoStack] = useState([]);
     const [redoStack, setRedoStack] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
     const [showHelperText, setShowHelperText] = useState(false);
     const [helperText, setHelperText] = useState('');
-
-    // State for image initial positioning
     const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
     const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 });
-
-    // Tools: move, polygon, segmentation
     const [selectedTool, setSelectedTool] = useState('move');
-
-    // For segmentation we also allow selection of segmentation type and, for panoptic, option
     const [segmentationType, setSegmentationType] = useState('instance');
     const [panopticOption, setPanopticOption] = useState('instance');
-
-    // Active label state – we now use a local labelClasses list for modification
-    const [selectedLabelClass, setSelectedLabelClass] = useState(
-        labelClasses[0]?.name || ''
-    );
-    const [localLabelClasses, setLocalLabelClasses] = useState(labelClasses);
-
+    const [selectedLabelClass, setSelectedLabelClass] = useState('');
+    const [localLabelClasses, setLocalLabelClasses] = useState([]);
     const [scale, setScale] = useState(1.0);
-    const currentFileUrl = filesList[currentIndex]?.url;
-    const currentShapes = annotations[currentFileUrl] || [];
 
-    // New state for points‐limit modal for polygon & segmentation tools
+    // Points limit modal state for polygon/segmentation tools
     const [showPointsLimitModal, setShowPointsLimitModal] = useState(false);
     const [pointsLimitInput, setPointsLimitInput] = useState('');
     const [pendingTool, setPendingTool] = useState('');
     const [currentPointsLimit, setCurrentPointsLimit] = useState(0);
 
-    // State for selected annotation for opacity control
+    // Selected annotation state for opacity control
     const [selectedAnnotationIndex, setSelectedAnnotationIndex] = useState(null);
 
-    const handleUpdateAllAnnotations = (updatedAnnotations) => {
-        const updated = {
-            ...annotations,
-            [currentFileUrl]: updatedAnnotations,
-        };
-        setUndoStack([...undoStack, annotations]);
-        setRedoStack([]);
-        setAnnotations(updated);
-    };
-
-    // Whenever shapes change, store old state in undoStack
-    const handleAnnotationsChange = (newShapes) => {
-        const updated = {
-            ...annotations,
-            [currentFileUrl]: newShapes,
-        };
-        setUndoStack([...undoStack, annotations]);
-        setRedoStack([]);
-        setAnnotations(updated);
-    };
-
-    //shortcut for n/N to draw last drawn annotation
+    // State for last tool settings
     const [lastToolState, setLastToolState] = useState({
         tool: null,
         pointsLimit: 0,
-        segmentationType: null,  // Only for Segmentation.js
-        panopticOption: null     // Only for Segmentation.js
+        segmentationType: null,
+        panopticOption: null
     });
 
-    // Display helper text when tool is changed
-    useEffect(() => {
-        if (selectedTool === 'move') {
-            showHelper('Move and select objects (M)');
-        } else if (selectedTool === 'polygon') {
-            showHelper('Click to add points. Double-click to complete polygon (P)');
-        } else if (selectedTool === 'instance') {
-            showHelper('Draw instance segmentation polygon (I)');
-        } else if (selectedTool === 'semantic') {
-            showHelper('Draw semantic segmentation polygon (S)');
-        } else if (selectedTool === 'panoptic') {
-            showHelper(`Draw panoptic ${panopticOption} segmentation polygon (A)`);
-        }
-    }, [selectedTool, panopticOption]);
+    // New states for Add Image modal
+    const [showAddImageModal, setShowAddImageModal] = useState(false);
+    const [newFiles, setNewFiles] = useState(null);
+    const [selectedAddFolder, setSelectedAddFolder] = useState('');
 
-    // Calculate canvas dimensions
-    useEffect(() => {
-        if (canvasAreaRef.current) {
-            setCanvasDimensions({
-                width: canvasAreaRef.current.offsetWidth,
-                height: canvasAreaRef.current.offsetHeight
+    // *** Added missing states for Add Label Modal ***
+    const [showAddLabelModal, setShowAddLabelModal] = useState(false);
+    const [newLabelName, setNewLabelName] = useState('');
+    const [newLabelColor, setNewLabelColor] = useState('#ff0000');
+
+    // Other UI refs
+    const fileInputRef = useRef(null);
+    const canvasHelperRef = useRef(null);
+    const canvasAreaRef = useRef(null);
+
+    // Helper to extract files from a folder tree
+    const extractFilesFromTree = (node, basePath) => {
+        let files = [];
+        if (node.type === 'file') {
+            const url = `http://localhost:4000/uploads/${basePath}/${node.name}`;
+            files.push({ originalname: node.name, url });
+        } else if (node.type === 'folder' && node.children) {
+            const baseParts = basePath.split('/');
+            const lastSegment = baseParts[baseParts.length - 1];
+            const newBasePath = (node.name === lastSegment) ? basePath : basePath + '/' + node.name;
+            node.children.forEach(child => {
+                files = files.concat(extractFilesFromTree(child, newBasePath));
             });
         }
-    }, []);
+        return files;
+    };
 
-    // Handle clicking outside to deselect annotations
+    // Fetch task and project data based on taskId
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (selectedAnnotationIndex !== null &&
-                !event.target.closest('.anno-item') &&
-                !event.target.closest('.appearance-section')) {
-                setSelectedAnnotationIndex(null);
-            }
-        };
+        if (!taskId) {
+            alert("No task id provided. Please create a task first.");
+            navigate('/userhome');
+            return;
+        }
+        fetch('http://localhost:4000/api/tasks')
+            .then(res => res.json())
+            .then(tasks => {
+                const task = tasks.find(t => t.task_id === taskId);
+                if (!task) {
+                    alert("Task not found.");
+                    navigate('/userhome');
+                    return;
+                }
+                setTaskData(task);
+                const folderPaths = task.selected_files.split(';').filter(x => x);
+                setTaskFolderPaths(folderPaths);
+                fetch('http://localhost:4000/api/projects')
+                    .then(res => res.json())
+                    .then(projects => {
+                        const project = projects.find(p => p.project_id === task.project_id);
+                        if (!project) {
+                            alert("Project not found.");
+                            navigate('/userhome');
+                            return;
+                        }
+                        setProjectData(project);
+                        setLocalLabelClasses(project.label_classes || []);
+                        if (project.label_classes && project.label_classes.length > 0) {
+                            setSelectedLabelClass(project.label_classes[0].name);
+                        }
+                        const fetchFolderPromises = folderPaths.map(folderPath => {
+                            return fetch(`http://localhost:4000/api/folder-structure/${encodeURIComponent(folderPath)}`)
+                                .then(res => res.json());
+                        });
+                        Promise.all(fetchFolderPromises)
+                            .then(results => {
+                                let allFilesFetched = [];
+                                results.forEach((tree, idx) => {
+                                    const filesFromTree = extractFilesFromTree(tree, folderPaths[idx]);
+                                    allFilesFetched = allFilesFetched.concat(filesFromTree);
+                                });
+                                setFilesList(allFilesFetched);
+                                setAllFiles(allFilesFetched);
+                            })
+                            .catch(err => console.error("Error fetching folder structures", err));
+                    });
+            })
+            .catch(err => console.error("Error fetching tasks", err));
+    }, [taskId, navigate]);
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [selectedAnnotationIndex]);
+    const taskName = taskData ? taskData.task_name : '';
+    const currentFileUrl = filesList[currentIndex]?.url;
+    const currentShapes = annotations[currentFileUrl] || [];
 
     const showHelper = (text) => {
         setHelperText(text);
@@ -259,8 +254,6 @@ export default function Segmentation() {
         if (canvasHelperRef.current) {
             canvasHelperRef.current.classList.add('visible');
         }
-
-        // Hide helper text after 3 seconds
         setTimeout(() => {
             if (canvasHelperRef.current) {
                 canvasHelperRef.current.classList.remove('visible');
@@ -269,7 +262,21 @@ export default function Segmentation() {
         }, 3000);
     };
 
-    // Center the image manually
+    // Load annotations from the project folder
+    useEffect(() => {
+        if (projectData) {
+            const folderId = projectData.folder_path.split('/')[1];
+            fetch(`http://localhost:4000/api/annotations/${folderId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.annotations) {
+                        setAnnotations(data.annotations);
+                    }
+                })
+                .catch(err => console.error("Error fetching annotations", err));
+        }
+    }, [projectData]);
+
     const handleCenterImage = () => {
         if (currentFileUrl) {
             const img = new Image();
@@ -278,24 +285,15 @@ export default function Segmentation() {
                 if (canvasAreaRef.current) {
                     const canvasWidth = canvasAreaRef.current.offsetWidth;
                     const canvasHeight = canvasAreaRef.current.offsetHeight;
-
-                    // Calculate position to center the image
                     const xPos = Math.max(0, (canvasWidth - img.width) / 2);
                     const yPos = Math.max(0, (canvasHeight - img.height) / 2);
-
-                    // Set the position (with a minimum of 0 to avoid negative positioning)
-                    setImagePosition({
-                        x: Math.max(0, xPos),
-                        y: Math.max(0, yPos)
-                    });
-
+                    setImagePosition({ x: xPos, y: yPos });
                     showHelper('Image centered');
                 }
             };
         }
     };
 
-    // -------------- Undo / Redo --------------
     const undo = () => {
         if (undoStack.length === 0) return;
         const prev = undoStack[undoStack.length - 1];
@@ -314,47 +312,48 @@ export default function Segmentation() {
         showHelper('Redo successful');
     };
 
-    // -------------- Deletion & Update --------------
-    const handleDeleteAnnotation = (index) => {
-        const arr = [...currentShapes];
-        arr.splice(index, 1);
-        handleAnnotationsChange(arr);
-        showHelper('Annotation deleted');
-
-        // Reset selected annotation if the deleted one was selected
-        if (selectedAnnotationIndex === index) {
-            setSelectedAnnotationIndex(null);
-        } else if (selectedAnnotationIndex > index) {
-            // Adjust selected index if it was after the deleted one
-            setSelectedAnnotationIndex(selectedAnnotationIndex - 1);
-        }
+    const handleAnnotationsChange = (newShapes) => {
+        const updated = {
+            ...annotations,
+            [currentFileUrl]: newShapes,
+        };
+        setUndoStack([...undoStack, annotations]);
+        setRedoStack([]);
+        setAnnotations(updated);
     };
 
-    const handleUpdateAnnotation = (index, changes) => {
-        const arr = [...currentShapes];
-        arr[index] = { ...arr[index], ...changes };
-        handleAnnotationsChange(arr);
+    const handleUpdateAllAnnotations = (updatedAnnotations) => {
+        const updated = {
+            ...annotations,
+            [currentFileUrl]: updatedAnnotations,
+        };
+        setUndoStack([...undoStack, annotations]);
+        setRedoStack([]);
+        setAnnotations(updated);
     };
 
-    // -------------- Navigation --------------
+    useEffect(() => {
+        setSelectedAnnotationIndex(null);
+    }, [currentIndex, currentFileUrl]);
+
     const handlePrev = () => {
-        if (currentIndex > 0) setCurrentIndex((i) => i - 1);
-    };
-    const handleNext = () => {
-        if (currentIndex < files.length - 1) setCurrentIndex((i) => i + 1);
+        if (currentIndex > 0) setCurrentIndex(i => i - 1);
     };
 
-    // -------------- Zoom --------------
-    const handleZoomIn = () => setScale((s) => Math.min(s + 0.1, 5));
-    const handleZoomOut = () => setScale((s) => Math.max(s - 0.1, 0.2));
+    const handleNext = () => {
+        if (currentIndex < filesList.length - 1) setCurrentIndex(i => i + 1);
+    };
+
+    const handleZoomIn = () => setScale(s => Math.min(s + 0.1, 5));
+    const handleZoomOut = () => setScale(s => Math.max(s - 0.1, 0.2));
     const handleWheelZoom = (deltaY) => {
         if (deltaY < 0) handleZoomIn();
         else handleZoomOut();
     };
 
-    // -------------- Save --------------
     const handleSave = async () => {
         setIsSaving(true);
+        const folderId = projectData ? projectData.folder_path.split('/')[1] : '';
         const bodyData = {
             folderId,
             taskName,
@@ -367,7 +366,7 @@ export default function Segmentation() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bodyData),
             });
-            const data = await res.json();
+            await res.json();
             showHelper('Annotations saved successfully');
         } catch (err) {
             console.error(err);
@@ -377,19 +376,15 @@ export default function Segmentation() {
         }
     };
 
-    // -------------- Fill Background Button --------------
     const handleFillBackground = () => {
         if (!currentFileUrl) return;
-        const img = new window.Image();
+        const img = new Image();
         img.src = currentFileUrl;
         img.onload = () => {
             const width = img.width;
             const height = img.height;
             const bgAnn = computeBackgroundPolygon(width, height, currentShapes, localLabelClasses);
-            // Remove any existing background annotation (by label)
-            const newShapes = currentShapes.filter(
-                (ann) => ann.label.toLowerCase() !== 'background'
-            );
+            const newShapes = currentShapes.filter(ann => ann.label.toLowerCase() !== 'background');
             newShapes.push(bgAnn);
             handleAnnotationsChange(newShapes);
             showHelper('Background filled');
@@ -404,7 +399,7 @@ export default function Segmentation() {
             { x: 0, y: imageHeight },
         ];
         const holes = [];
-        shapes.forEach((ann) => {
+        shapes.forEach(ann => {
             if (ann.type === 'polygon') {
                 if (ann.label.toLowerCase() !== 'background') {
                     holes.push(ann.points);
@@ -428,16 +423,18 @@ export default function Segmentation() {
             holes: holes,
             label: 'background',
             color: bgColor,
-            opacity: 0.5, // Default opacity for background
+            opacity: 0.5,
         };
     }
 
-    // -------------- Keyboard Shortcuts --------------
     useEffect(() => {
         const handleKey = (e) => {
             const key = e.key;
-
-            if (key === 'm' || key === 'M') {
+            if ((key === 's' || key === 'S') && e.ctrlKey) {
+                e.preventDefault();
+                handleSave();
+            }
+            else if (key === 'm' || key === 'M') {
                 setSelectedTool('move');
             } else if (key === 'p' || key === 'P') {
                 handleToolChange('polygon');
@@ -447,15 +444,10 @@ export default function Segmentation() {
                 handleToolChange('semantic');
             } else if (key === 'a' || key === 'A') {
                 handleToolChange('panoptic');
-            } else if ((key === 's' || key === 'S') && e.ctrlKey) {
-                e.preventDefault();
-                handleSave();
             } else if (key === 'c' || key === 'C') {
                 handleCenterImage();
             }
-
             if (key === 'Escape') {
-                // Close open controls on Escape
                 if (selectedAnnotationIndex !== null) {
                     setSelectedAnnotationIndex(null);
                 } else {
@@ -476,12 +468,11 @@ export default function Segmentation() {
                 e.preventDefault();
                 redo();
             }
-
             if (key === 'n' || key === 'N') {
                 if (lastToolState.tool) {
                     setCurrentPointsLimit(lastToolState.pointsLimit);
                     setSelectedTool(lastToolState.tool);
-                    if (lastToolState.segmentationType) {  // Only for Segmentation.js
+                    if (lastToolState.segmentationType) {
                         setSegmentationType(lastToolState.segmentationType);
                         setPanopticOption(lastToolState.panopticOption);
                     }
@@ -493,148 +484,6 @@ export default function Segmentation() {
         return () => window.removeEventListener('keydown', handleKey);
     }, [annotations, undoStack, redoStack, selectedAnnotationIndex, panopticOption]);
 
-
-    // -------------- Add Label Modal --------------
-    const [showAddLabelModal, setShowAddLabelModal] = useState(false);
-    const [newLabelName, setNewLabelName] = useState('');
-    const [newLabelColor, setNewLabelColor] = useState('#ff0000');
-
-    // Candidate colors for auto-selection
-    const CANDIDATE_COLORS = [
-        '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
-        '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
-        '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000',
-        '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
-    ];
-
-    // Helper: shadeColor (same as used elsewhere)
-    function shadeColor(col, amt) {
-        let usePound = false;
-        let color = col;
-        if (color[0] === '#') {
-            color = color.slice(1);
-            usePound = true;
-        }
-        let R = parseInt(color.substring(0, 2), 16);
-        let G = parseInt(color.substring(2, 4), 16);
-        let B = parseInt(color.substring(4, 6), 16);
-
-        R = Math.min(255, Math.max(0, R + amt));
-        G = Math.min(255, Math.max(0, G + amt));
-        B = Math.min(255, Math.max(0, B + amt));
-
-        const RR = R.toString(16).padStart(2, '0');
-        const GG = G.toString(16).padStart(2, '0');
-        const BB = B.toString(16).padStart(2, '0');
-
-        return (usePound ? '#' : '') + RR + GG + BB;
-    }
-
-    // Compute the next available color (checking both label colors and their instance variations)
-    function getNextAvailableColor() {
-        const usedColors = new Set();
-        const offsets = [0, -50, -100, -150, -200];
-        localLabelClasses.forEach((lc) => {
-            usedColors.add(lc.color.toLowerCase());
-            offsets.forEach((offset) => {
-                usedColors.add(shadeColor(lc.color, offset).toLowerCase());
-            });
-        });
-        for (let color of CANDIDATE_COLORS) {
-            if (!usedColors.has(color.toLowerCase())) {
-                return color;
-            }
-        }
-        return CANDIDATE_COLORS[0];
-    }
-
-    // When the add-label modal is opened, automatically select a new color
-    useEffect(() => {
-        if (showAddLabelModal) {
-            setNewLabelColor(getNextAvailableColor());
-        }
-    }, [showAddLabelModal, localLabelClasses]);
-
-    // Update the handleAddNewLabel function in Detection.js
-    const handleAddNewLabel = async () => {
-        if (!newLabelName.trim()) {
-            showHelper('Label name cannot be empty');
-            return;
-        }
-        const nameExists = localLabelClasses.some(
-            (lc) => lc.name.toLowerCase() === newLabelName.trim().toLowerCase()
-        );
-        if (nameExists) {
-            showHelper('Label already exists');
-            return;
-        }
-        const colorExists = localLabelClasses.some(
-            (lc) => lc.color.toLowerCase() === newLabelColor.trim().toLowerCase()
-        );
-        if (colorExists) {
-            showHelper('Label color already used. Please choose a different color.');
-            return;
-        }
-
-        const newLabel = { name: newLabelName.trim(), color: newLabelColor };
-        const updatedLabels = [...localLabelClasses, newLabel];
-
-        try {
-            // Update labels in tasks.csv
-            const updateLabelsRes = await fetch(`http://localhost:4000/api/tasks/${folderInfo.taskId}/labels`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ labelClasses: updatedLabels })
-            });
-
-            if (!updateLabelsRes.ok) {
-                throw new Error('Failed to update labels in task');
-            }
-
-            // Update annotations.json with new labels
-            const annotationsRes = await fetch('http://localhost:4000/api/annotations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    folderId: folderInfo.folderId,
-                    taskName: taskName,
-                    labelClasses: updatedLabels,
-                    annotations: annotations
-                })
-            });
-
-            if (!annotationsRes.ok) {
-                throw new Error('Failed to update annotations');
-            }
-
-            // Update local state
-            setLocalLabelClasses(updatedLabels);
-            setSelectedLabelClass(newLabel.name);
-            setNewLabelName('');
-            setNewLabelColor('#ff0000');
-            setShowAddLabelModal(false);
-            showHelper(`Added new label: ${newLabel.name}`);
-        } catch (error) {
-            console.error('Error updating labels:', error);
-            showHelper('Failed to add new label: ' + error.message);
-        }
-    };
-
-    // -------------- When annotation finishes => switch to move --------------
-    // Modify handleFinishShape in both files to store the last tool state
-    const handleFinishShape = () => {
-        setLastToolState({
-            tool: selectedTool,
-            pointsLimit: currentPointsLimit,
-            segmentationType: segmentationType,  // Only for Segmentation.js
-            panopticOption: panopticOption      // Only for Segmentation.js
-        });
-        setSelectedTool('move');
-        setSelectedAnnotationIndex(null);
-        showHelper('Annotation completed');
-    };
-
-    // Function to handle tool changes for polygon and segmentation
     const handleToolChange = (tool) => {
         if (tool === 'polygon' || tool === 'instance' || tool === 'semantic' || tool === 'panoptic') {
             setPendingTool(tool);
@@ -644,115 +493,43 @@ export default function Segmentation() {
         }
     };
 
-    // Get the current label color
-    const activeLabelColor = localLabelClasses.find(
-        (l) => l.name === selectedLabelClass
-    )?.color || '#ff0000';
+    const activeLabelColor = localLabelClasses.find(l => l.name === selectedLabelClass)?.color || '#ff0000';
 
-    // Add image handler function
+    // Updated Add Image handler to open modal
     const handleAddImage = () => {
-        fileInputRef.current.click();
+        setShowAddImageModal(true);
     };
 
-    const handleFileSelect = async (e) => {
-        const selectedFiles = e.target.files;
-        if (!selectedFiles || selectedFiles.length === 0) return;
+    // Updated Delete Image handler to support nested paths
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
 
-        setIsUploading(true);
-        showHelper('Uploading image(s)...');
-
-        const formData = new FormData();
-        for (let i = 0; i < selectedFiles.length; i++) {
-            formData.append('files', selectedFiles[i]);
-        }
-
-        console.log("Uploading to folder:", folderId);
-
-        try {
-            const response = await fetch(`http://localhost:4000/api/images/${folderId}`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to upload images');
-            }
-
-            const result = await response.json();
-            console.log("Upload result:", result);
-
-            // Update files list with newly uploaded files
-            const updatedFilesList = [...filesList, ...result.files];
-            setFilesList(updatedFilesList);
-
-            // Navigate to the first new image if any were uploaded
-            if (result.files.length > 0) {
-                setCurrentIndex(filesList.length); // This will show the first new image
-            }
-
-            showHelper(`Successfully uploaded ${result.files.length} image(s)`);
-        } catch (error) {
-            console.error('Error uploading images:', error);
-            showHelper('Error uploading image(s)');
-        } finally {
-            setIsUploading(false);
-            // Reset file input
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-        }
-    };
-
-    // Delete image handler function
     const handleDeleteImage = () => {
         if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) {
             showHelper('No image to delete');
             return;
         }
-
         setShowConfirmDeleteModal(true);
     };
 
     const confirmDeleteImage = async () => {
         if (!filesList.length || currentIndex < 0 || currentIndex >= filesList.length) return;
-
         const currentFile = filesList[currentIndex];
         setIsDeleting(true);
-
         try {
-            // Extract filename from URL
-            // URL format is typically: http://localhost:4000/uploads/FOLDER_ID/FILENAME
-            const urlParts = currentFile.url.split('/');
-            const filename = urlParts[urlParts.length - 1];
-
-            const response = await fetch(`http://localhost:4000/api/images/${folderId}/${filename}`, {
-                method: 'DELETE',
+            const relativePathFull = currentFile.url.split('/uploads/')[1];
+            const parts = relativePathFull.split('/');
+            const folderId = parts.shift();
+            const relativePath = parts.join('/');
+            const response = await fetch(`http://localhost:4000/api/images/${folderId}/${relativePath}`, {
+                method: 'DELETE'
             });
-
             if (!response.ok) {
                 throw new Error('Failed to delete image');
             }
-
-            // Remove deleted file from the list
             const updatedFiles = [...filesList];
             updatedFiles.splice(currentIndex, 1);
-
-            // Remove annotations for this file
-            const updatedAnnotations = { ...annotations };
-            delete updatedAnnotations[currentFile.url];
-
-            // Update state
             setFilesList(updatedFiles);
-            setAnnotations(updatedAnnotations);
-
-            // Adjust current index if needed
-            if (currentIndex >= updatedFiles.length && updatedFiles.length > 0) {
-                setCurrentIndex(updatedFiles.length - 1);
-            } else if (updatedFiles.length === 0) {
-                // Handle case when all images are deleted
-                setCurrentIndex(0);
-            }
-
             showHelper('Image deleted successfully');
         } catch (error) {
             console.error('Error deleting image:', error);
@@ -765,19 +542,16 @@ export default function Segmentation() {
 
     return (
         <div className="annotate-container">
+            {/* Hidden file input (retained for fallback purposes) */}
             <input
                 type="file"
                 ref={fileInputRef}
                 style={{ display: 'none' }}
-                onChange={handleFileSelect}
+                onChange={() => { }}
                 accept="image/*"
                 multiple
             />
-            <HomeTopBar
-                taskName={taskName}
-                showControls={true}
-                isSaving={isSaving}
-            />
+            <UserHomeTopBar taskName={taskName} showControls={true} isSaving={isSaving} />
 
             <div className="annotate-actions">
                 <button onClick={undo} disabled={undoStack.length === 0} title="Undo (Ctrl+Z)">
@@ -797,28 +571,22 @@ export default function Segmentation() {
                     <CenterIcon /> Center
                 </button>
                 <div className="divider"></div>
-                <button onClick={handlePrev} disabled={currentIndex <= 0}>
-                    Prev
-                </button>
-                <button onClick={handleNext} disabled={currentIndex >= files.length - 1}>
-                    Next
-                </button>
-                <button onClick={handleAddImage} disabled={isUploading} title="Add Image">
+                <button onClick={handlePrev} disabled={currentIndex <= 0}>Prev</button>
+                <button onClick={handleNext} disabled={currentIndex >= filesList.length - 1}>Next</button>
+                <button onClick={handleAddImage} disabled={isSaving} title="Add Image">
                     <AddImageIcon /> Add Image
                 </button>
                 <button onClick={handleDeleteImage} disabled={isDeleting || filesList.length === 0} title="Delete Current Image">
                     <DeleteImageIcon /> Delete Image
                 </button>
-                <button onClick={() => setShowShortcuts(true)}>
+                <button onClick={() => { /* Show shortcuts modal if implemented */ }}>
                     Keyboard Shortcuts
                 </button>
                 <div className="divider"></div>
                 <button onClick={handleZoomOut}>- Zoom</button>
                 <button onClick={handleZoomIn}>+ Zoom</button>
                 <button onClick={() => { }}>Export</button>
-                <span className="img-count">
-                    {currentIndex + 1} / {filesList.length}
-                </span>
+                <span className="img-count">{currentIndex + 1} / {filesList.length}</span>
             </div>
 
             <div className="annotate-main">
@@ -827,63 +595,47 @@ export default function Segmentation() {
                     <div className="sidebar-section">
                         <h3><ToolsIcon /> Tools</h3>
                         <div className="tool-grid">
-                            <div
-                                className={`tool-button ${selectedTool === 'move' ? 'active' : ''}`}
+                            <div className={`tool-button ${selectedTool === 'move' ? 'active' : ''}`}
                                 onClick={() => setSelectedTool('move')}
-                                title="Move Tool (M)"
-                            >
+                                title="Move Tool (M)">
                                 <div className="tool-icon"><MoveIcon /></div>
                                 <div className="tool-name">Move</div>
                                 <div className="keyboard-hint">M</div>
                             </div>
-                            <div
-                                className={`tool-button ${selectedTool === 'polygon' ? 'active' : ''}`}
+                            <div className={`tool-button ${selectedTool === 'polygon' ? 'active' : ''}`}
                                 onClick={() => handleToolChange('polygon')}
-                                title="Polygon Tool (P)"
-                            >
+                                title="Polygon Tool (P)">
                                 <div className="tool-icon"><PolygonIcon /></div>
                                 <div className="tool-name">Polygon</div>
                                 <div className="keyboard-hint">P</div>
                             </div>
                         </div>
-
-                        {/* Segmentation section with heading */}
                         <div className="segmentation-section">
                             <h4 className="segmentation-heading">Segmentation</h4>
-
-                            {/* Segmentation tools in their own grid below the heading */}
                             <div className="tool-grid">
-                                <div
-                                    className={`tool-button ${selectedTool === 'instance' ? 'active' : ''}`}
+                                <div className={`tool-button ${selectedTool === 'instance' ? 'active' : ''}`}
                                     onClick={() => handleToolChange('instance')}
-                                    title="Instance Segmentation Tool (I)"
-                                >
+                                    title="Instance Segmentation Tool (I)">
                                     <div className="tool-icon"><SegmentationIcon /></div>
                                     <div className="tool-name">Instance</div>
                                     <div className="keyboard-hint">I</div>
                                 </div>
-                                <div
-                                    className={`tool-button ${selectedTool === 'semantic' ? 'active' : ''}`}
+                                <div className={`tool-button ${selectedTool === 'semantic' ? 'active' : ''}`}
                                     onClick={() => handleToolChange('semantic')}
-                                    title="Semantic Segmentation Tool (S)"
-                                >
+                                    title="Semantic Segmentation Tool (S)">
                                     <div className="tool-icon"><SegmentationIcon /></div>
                                     <div className="tool-name">Semantic</div>
                                     <div className="keyboard-hint">S</div>
                                 </div>
-                                <div
-                                    className={`tool-button ${selectedTool === 'panoptic' ? 'active' : ''}`}
+                                <div className={`tool-button ${selectedTool === 'panoptic' ? 'active' : ''}`}
                                     onClick={() => handleToolChange('panoptic')}
-                                    title="Panoptic Segmentation Tool (A)"
-                                >
+                                    title="Panoptic Segmentation Tool (A)">
                                     <div className="tool-icon"><SegmentationIcon /></div>
                                     <div className="tool-name">Panoptic</div>
                                     <div className="keyboard-hint">A</div>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Only show panoptic options when panoptic is selected */}
                         {selectedTool === 'panoptic' && (
                             <div className="option-section">
                                 <h4>Panoptic Option</h4>
@@ -912,18 +664,12 @@ export default function Segmentation() {
                             </div>
                         )}
                     </div>
-
                     <div className="sidebar-section">
                         <h3><PaletteIcon /> Active Label</h3>
                         <div className="label-selection">
-                            <select
-                                value={selectedLabelClass}
-                                onChange={(e) => setSelectedLabelClass(e.target.value)}
-                            >
+                            <select value={selectedLabelClass} onChange={(e) => setSelectedLabelClass(e.target.value)}>
                                 {localLabelClasses.map((lc, i) => (
-                                    <option key={i} value={lc.name}>
-                                        {lc.name}
-                                    </option>
+                                    <option key={i} value={lc.name}>{lc.name}</option>
                                 ))}
                             </select>
                             <button onClick={() => setShowAddLabelModal(true)}>
@@ -931,20 +677,17 @@ export default function Segmentation() {
                             </button>
                         </div>
                         <div className="label-preview">
-                            <div
-                                className="label-color"
-                                style={{ backgroundColor: activeLabelColor }}
-                            ></div>
+                            <div className="label-color" style={{ backgroundColor: activeLabelColor }}></div>
                             <span>Current Label: {selectedLabelClass}</span>
                         </div>
                     </div>
                 </div>
-
                 {/* Canvas */}
                 <div className="canvas-area" ref={canvasAreaRef}>
                     {currentFileUrl ? (
                         <>
                             <SegmentationCanvas
+                                key={currentFileUrl}
                                 fileUrl={currentFileUrl}
                                 annotations={currentShapes}
                                 onAnnotationsChange={handleAnnotationsChange}
@@ -952,8 +695,28 @@ export default function Segmentation() {
                                 scale={scale}
                                 onWheelZoom={handleWheelZoom}
                                 activeLabelColor={activeLabelColor}
-                                onFinishShape={handleFinishShape}
-                                onDeleteAnnotation={handleDeleteAnnotation}
+                                onFinishShape={() => {
+                                    setLastToolState({
+                                        tool: selectedTool,
+                                        pointsLimit: currentPointsLimit,
+                                        segmentationType: segmentationType,
+                                        panopticOption: panopticOption
+                                    });
+                                    setSelectedTool('move');
+                                    setSelectedAnnotationIndex(null);
+                                    showHelper('Annotation completed');
+                                }}
+                                onDeleteAnnotation={(index) => {
+                                    const arr = [...currentShapes];
+                                    arr.splice(index, 1);
+                                    handleAnnotationsChange(arr);
+                                    showHelper('Annotation deleted');
+                                    if (selectedAnnotationIndex === index) {
+                                        setSelectedAnnotationIndex(null);
+                                    } else if (selectedAnnotationIndex > index) {
+                                        setSelectedAnnotationIndex(selectedAnnotationIndex - 1);
+                                    }
+                                }}
                                 activeLabel={selectedLabelClass}
                                 labelClasses={localLabelClasses}
                                 segmentationType={segmentationType}
@@ -975,11 +738,18 @@ export default function Segmentation() {
                         </div>
                     )}
                 </div>
-
                 <AnnotationListSidebar
                     annotations={currentShapes}
-                    onDeleteAnnotation={handleDeleteAnnotation}
-                    onUpdateAnnotation={handleUpdateAnnotation}
+                    onDeleteAnnotation={(index) => {
+                        const arr = [...currentShapes];
+                        arr.splice(index, 1);
+                        handleAnnotationsChange(arr);
+                    }}
+                    onUpdateAnnotation={(index, changes) => {
+                        const arr = [...currentShapes];
+                        arr[index] = { ...arr[index], ...changes };
+                        handleAnnotationsChange(arr);
+                    }}
                     labelClasses={localLabelClasses}
                     selectedAnnotationIndex={selectedAnnotationIndex}
                     setSelectedAnnotationIndex={setSelectedAnnotationIndex}
@@ -1002,7 +772,12 @@ export default function Segmentation() {
                             />
                         </div>
                         <div className="color-palette">
-                            {CANDIDATE_COLORS.map((color, idx) => (
+                            {[
+                                '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
+                                '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4',
+                                '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000',
+                                '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
+                            ].map((color, idx) => (
                                 <div
                                     key={idx}
                                     className={`color-option ${newLabelColor === color ? 'selected' : ''}`}
@@ -1019,7 +794,50 @@ export default function Segmentation() {
                             />
                         </div>
                         <div className="modal-footer">
-                            <button onClick={handleAddNewLabel} className="primary">
+                            <button onClick={async () => {
+                                if (!newLabelName.trim()) {
+                                    showHelper('Label name cannot be empty');
+                                    return;
+                                }
+                                const nameExists = localLabelClasses.some(lc => lc.name.toLowerCase() === newLabelName.trim().toLowerCase());
+                                if (nameExists) {
+                                    showHelper('Label already exists');
+                                    return;
+                                }
+                                const colorExists = localLabelClasses.some(lc => lc.color.toLowerCase() === newLabelColor.trim().toLowerCase());
+                                if (colorExists) {
+                                    showHelper('Label color already used. Please choose a different color.');
+                                    return;
+                                }
+                                const newLabel = { name: newLabelName.trim(), color: newLabelColor };
+                                const updatedLabels = [...localLabelClasses, newLabel];
+                                try {
+                                    await fetch(`http://localhost:4000/api/projects/${projectData.project_id}/labels`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ labelClasses: updatedLabels })
+                                    });
+                                    await fetch('http://localhost:4000/api/annotations', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            folderId: projectData ? projectData.folder_path.split('/')[1] : '',
+                                            taskName,
+                                            labelClasses: updatedLabels,
+                                            annotations
+                                        })
+                                    });
+                                    setLocalLabelClasses(updatedLabels);
+                                    setSelectedLabelClass(newLabel.name);
+                                    setNewLabelName('');
+                                    setNewLabelColor('#ff0000');
+                                    setShowAddLabelModal(false);
+                                    showHelper(`Added new label: ${newLabel.name}`);
+                                } catch (error) {
+                                    console.error('Error updating labels:', error);
+                                    showHelper('Failed to add new label: ' + error.message);
+                                }
+                            }} className="primary">
                                 Add
                             </button>
                             <button onClick={() => setShowAddLabelModal(false)} className="secondary">
@@ -1052,27 +870,17 @@ export default function Segmentation() {
                             />
                         </div>
                         <div className="modal-footer">
-                            <button
-                                className="primary"
-                                onClick={() => {
-                                    const limit = parseInt(pointsLimitInput);
-                                    setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
-                                    setSelectedTool(pendingTool);
-                                    setShowPointsLimitModal(false);
-                                    setPointsLimitInput('');
-                                }}
-                            >
-                                Apply
-                            </button>
-                            <button
-                                className="secondary"
-                                onClick={() => {
-                                    setShowPointsLimitModal(false);
-                                    setPointsLimitInput('');
-                                }}
-                            >
-                                Cancel
-                            </button>
+                            <button className="primary" onClick={() => {
+                                const limit = parseInt(pointsLimitInput);
+                                setCurrentPointsLimit(isNaN(limit) ? 0 : limit);
+                                setSelectedTool(pendingTool);
+                                setShowPointsLimitModal(false);
+                                setPointsLimitInput('');
+                            }}>Apply</button>
+                            <button className="secondary" onClick={() => {
+                                setShowPointsLimitModal(false);
+                                setPointsLimitInput('');
+                            }}>Cancel</button>
                         </div>
                     </div>
                 </div>
@@ -1089,6 +897,85 @@ export default function Segmentation() {
                                 {isDeleting ? 'Deleting...' : 'Delete'}
                             </button>
                             <button onClick={() => setShowConfirmDeleteModal(false)} className="secondary">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal for uploading new image(s) */}
+            {showAddImageModal && (
+                <div className="modal-backdrop">
+                    <div className="modal">
+                        <h3>Upload New Image</h3>
+                        <div className="modal-section">
+                            <h4>Select File(s)</h4>
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={(e) => setNewFiles(e.target.files)}
+                            />
+                        </div>
+                        <div className="modal-section">
+                            <h4>Select Target Folder</h4>
+                            <select
+                                value={selectedAddFolder}
+                                onChange={(e) => setSelectedAddFolder(e.target.value)}
+                            >
+                                <option value="">Select a folder</option>
+                                {taskFolderPaths.map((fp, idx) => (
+                                    <option key={idx} value={fp}>{fp}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="primary" onClick={async () => {
+                                if (!newFiles || newFiles.length === 0 || !selectedAddFolder) {
+                                    showHelper("Please select file(s) and a target folder.");
+                                    return;
+                                }
+                                setIsSaving(true);
+                                showHelper("Uploading image(s)...");
+                                const formData = new FormData();
+                                for (let i = 0; i < newFiles.length; i++) {
+                                    formData.append('files', newFiles[i]);
+                                }
+                                try {
+                                    const response = await fetch(`http://localhost:4000/api/images/${encodeURIComponent(selectedAddFolder)}`, {
+                                        method: 'POST',
+                                        body: formData
+                                    });
+                                    if (!response.ok) {
+                                        throw new Error("Failed to upload image(s)");
+                                    }
+                                    const result = await response.json();
+                                    if (result.files && result.files.length > 0) {
+                                        const newFilesList = [...filesList, ...result.files];
+                                        setFilesList(newFilesList);
+                                        setCurrentIndex(newFilesList.length - result.files.length);
+                                        showHelper(`Uploaded ${result.files.length} image(s) successfully`);
+                                    } else {
+                                        showHelper("No new images were uploaded");
+                                    }
+                                } catch (error) {
+                                    console.error("Error uploading images:", error);
+                                    showHelper("Error uploading image(s): " + error.message);
+                                } finally {
+                                    setIsSaving(false);
+                                    setShowAddImageModal(false);
+                                    setNewFiles(null);
+                                    setSelectedAddFolder("");
+                                }
+                            }}>
+                                Upload
+                            </button>
+                            <button className="secondary" onClick={() => {
+                                setShowAddImageModal(false);
+                                setNewFiles(null);
+                                setSelectedAddFolder("");
+                            }}>
                                 Cancel
                             </button>
                         </div>

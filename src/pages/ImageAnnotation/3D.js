@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import HomeTopBar from '../components/HomeTopBar';
-import ThreeDCanvas from '../components/3DCanvas';
-import AnnotationListSidebar from '../components/AnnotationListSidebar';
+import HomeTopBar from '../../components/HomeTopBar';
+import ThreeDCanvas from '../../components/3DCanvas';
+import AnnotationListSidebar from '../../components/AnnotationListSidebar';
 import './3D.css';
 
 // SVG Icon Components

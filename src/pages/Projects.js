@@ -60,8 +60,7 @@ export default function Projects() {
                         </div>
                         <div className="project-image">
                             <img
-                                src={`http://localhost:4000/${proj.folder_path}/${proj.firstImage || 'default.jpg'
-                                    }`}
+                                src={proj.thumbnailImage || `http://localhost:4000/${proj.folder_path}/default.jpg`}
                                 alt={proj.project_name}
                             />
                         </div>

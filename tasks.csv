@@ -1,1 +1,4 @@
-task_id,user_id,task_name,folder_path,task_type,label_classes,created_at
+task_id,user_id,project_id,task_name,project_name,annotation_type,selected_files,created_at
+1f5fd921-b303-41f6-ac71-8658abfd0370,1740077374191,fdd1530b-0448-4c46-b8ee-3494a7a949c4,t1,p1,all,"0c8c8990-844f-4c98-9a21-30fe04ec7fc3/test_imag3;0c8c8990-844f-4c98-9a21-30fe04ec7fc3/test_img",2025-03-16T17:00:52.234Z
+19faa353-0191-42e5-a11e-87db123a6680,1740077374191,973217af-e075-4400-b6ff-21fe1bafcdae,seg task 1,seg proj,all,"c23f0db3-c364-4507-91d4-d1ec0d97d8a7/test_img;c23f0db3-c364-4507-91d4-d1ec0d97d8a7/test_img2",2025-03-17T18:45:02.190Z
+675cd99d-f5f4-4d01-a7f8-d36f2352e3b5,1740077374191,9586bc83-261a-4202-8ae8-edea0cbf4481,class task 1,class proj,all,"46f88332-bc7b-4426-b07e-24b0f37c3896/roots;46f88332-bc7b-4426-b07e-24b0f37c3896/test_img",2025-03-17T19:03:19.055Z

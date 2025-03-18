@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import UserHomeTopBar from '../components/UserHomeTopBar';
-import './ImageHome.css';
+import './ProjectImageHome.css';
 
 const COLOR_PALETTE = [
   '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
@@ -11,7 +11,7 @@ const COLOR_PALETTE = [
   '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'
 ];
 
-export default function ImageHome() {
+export default function ProjectImageHome() {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -71,6 +71,25 @@ export default function ImageHome() {
     } else {
       setFiles(selectedFiles);
     }
+  };
+
+  const handleFolderUpload = async (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length === 0) return;
+
+    // For preview, only show a few files from the root level
+    const rootFolderName = selectedFiles[0].webkitRelativePath.split('/')[0];
+    const rootLevelFiles = selectedFiles.filter(file => {
+      const pathParts = file.webkitRelativePath.split('/');
+      return pathParts.length === 2; // Only files directly in the root folder
+    });
+
+    const limited = rootLevelFiles.slice(0, 5).map(f => ({
+      url: URL.createObjectURL(f),
+      name: f.webkitRelativePath
+    }));
+    setPreviews(limited);
+    setFiles(selectedFiles);
   };
 
   const getNextColor = () => {
@@ -237,6 +256,7 @@ export default function ImageHome() {
   };
 
   // Function for project mode
+  // Function for project mode
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
       alert('Enter a project name');
@@ -270,16 +290,31 @@ export default function ImageHome() {
       const formData = new FormData();
       formData.append('projectName', projectName);
       formData.append('labelClasses', JSON.stringify(labelClasses));
-      files.forEach(f => formData.append('files', f));
+
+      // Add files with their webkitRelativePath information
+      files.forEach(file => {
+        // Save the webkitRelativePath for each file
+        if (file.webkitRelativePath) {
+          formData.append('filePaths', file.webkitRelativePath);
+        } else {
+          // For regular file uploads without folder structure
+          formData.append('filePaths', file.name);
+        }
+        formData.append('files', file);
+      });
+
       const uploadRes = await fetch('http://localhost:4000/api/upload', {
         method: 'POST',
         body: formData
       });
+
       if (!uploadRes.ok) {
         throw new Error('Upload failed');
       }
+
       const uploadData = await uploadRes.json();
       const userSession = JSON.parse(localStorage.getItem('user'));
+
       const projectRes = await fetch('http://localhost:4000/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -291,9 +326,11 @@ export default function ImageHome() {
           labelClasses: labelClasses
         })
       });
+
       if (!projectRes.ok) {
         throw new Error('Failed to create project');
       }
+
       const projectData = await projectRes.json();
       setFolderData({ ...uploadData, projectId: projectData.projectId });
       alert('Project created successfully!');
@@ -388,15 +425,38 @@ export default function ImageHome() {
                 ))}
               </ul>
             </div>
+            {/* BEGIN: Changed area for 'upload files' & 'upload folders' */}
             <div className="form-area">
               <label>Select Images or Folder</label>
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileChange}
-              />
+              <div className="upload-controls">
+                {/* 'Upload Files' label triggers hidden file input below */}
+                <label htmlFor="proj-file-input" className="upload-files-button">
+                  Upload Files
+                </label>
+                <span className="divider"></span>
+                {/* 'Upload Folders' button (does nothing new in logic; just UI) */}
+                <label htmlFor="folder-input" className="upload-folders-button">
+                  Upload Folders
+                </label>
+                <input
+                  id="proj-file-input"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  style={{ display: 'none' }} // hide default input UI
+                />
+                <input
+                  id="folder-input"
+                  type="file"
+                  webkitdirectory="true"
+                  directory="true"
+                  onChange={handleFolderUpload}
+                  style={{ display: 'none' }}
+                />
+              </div>
             </div>
+            {/* END: Changed area */}
             {previews.length > 0 && (
               <div className="preview-grid">
                 {previews.map((p, i) => (
@@ -411,77 +471,7 @@ export default function ImageHome() {
             </div>
           </>
         ) : (
-          <>
-            <h2>Create a New {threeDMode ? '3D Model' : 'Image'} Annotation Task</h2>
-            <div className="form-area">
-              <label>Task Name</label>
-              <input
-                type="text"
-                value={taskName}
-                onChange={(e) => setTaskName(e.target.value)}
-                placeholder="e.g. My Dataset"
-              />
-            </div>
-            <div className="labels-section">
-              <h3>Label Classes</h3>
-              <div className="label-form">
-                <input
-                  type="text"
-                  placeholder="e.g. Car"
-                  value={labelName}
-                  onChange={(e) => setLabelName(e.target.value)}
-                />
-                <input
-                  type="color"
-                  value={labelColor}
-                  onChange={(e) => setLabelColor(e.target.value)}
-                />
-                <button onClick={handleAddLabel}>Add</button>
-              </div>
-              <ul className="label-list">
-                {labelClasses.map((lc, i) => (
-                  <li key={i}>
-                    <span className="color-box" style={{ background: lc.color }} />
-                    {lc.name}
-                    <button onClick={() => handleRemoveLabel(i)}>X</button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="form-area">
-              <label>{threeDMode ? 'Select 3D Models' : 'Select Images'}</label>
-              <input
-                type="file"
-                multiple
-                accept={threeDMode ? ".obj,.glb,.gltf,.ply,.stl,.3ds,.fbx" : "image/*"}
-                onChange={handleFileChange}
-              />
-              {threeDMode && (
-                <p className="file-hint">Supported formats: .obj, .glb, .gltf, .ply, .stl, .3ds, .fbx</p>
-              )}
-            </div>
-            {previews.length > 0 && (
-              <div className="preview-grid">
-                {previews.map((p, i) => (
-                  <div key={i} className="preview-item">
-                    <img src={p.url} alt={p.name} />
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="buttons-row">
-              <button onClick={handleUpload}>Upload</button>
-              <button onClick={goAnnotate} disabled={!folderData}>
-                {segmentationMode
-                  ? 'Go to Segmentation'
-                  : classificationMode
-                    ? 'Go to Classification'
-                    : threeDMode
-                      ? 'Go to 3D Annotation'
-                      : 'Go to Detection'}
-              </button>
-            </div>
-          </>
+          null
         )}
       </div>
     </div>
