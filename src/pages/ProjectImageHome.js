@@ -25,7 +25,10 @@ export default function ProjectImageHome() {
   const [taskName, setTaskName] = useState('');
   // States for project mode
   const [projectName, setProjectName] = useState('');
-  const [projectType, setProjectType] = useState('Image Detection');
+  // New state for project category (first-level selection)
+  const [projectCategory, setProjectCategory] = useState('Image Annotation');
+  // The projectType state now holds one of the allowed suboptions; default is set for Image Annotation.
+  const [projectType, setProjectType] = useState('image detection');
 
   const [labelName, setLabelName] = useState('');
   const [labelColor, setLabelColor] = useState(COLOR_PALETTE[0]);
@@ -35,13 +38,40 @@ export default function ProjectImageHome() {
   const [previews, setPreviews] = useState([]);
   const [folderData, setFolderData] = useState(null);
 
+  // Compute allowed file accept attribute based on project category when in project mode.
+  const allowedAccept = projectMode
+    ? projectCategory === 'Image Annotation'
+      ? 'image/*'
+      : projectCategory === 'Video Annotation'
+        ? 'video/*'
+        : projectCategory === 'Text Annotation'
+          ? '.txt,.doc,.docx,.pdf'
+          : ''
+    : threeDMode
+      ? ''
+      : 'image/*';
+
+  // Compute hint text to display under file/folder selection.
+  const allowedFileTypesHint = projectMode
+    ? projectCategory === 'Image Annotation'
+      ? 'Allowed file types: Images (e.g. .jpg, .jpeg, .png, .gif, .bmp, .webp)'
+      : projectCategory === 'Video Annotation'
+        ? 'Allowed file types: Videos (e.g. .mp4, .avi, .mov, .mkv, .webm)'
+        : projectCategory === 'Text Annotation'
+          ? 'Allowed file types: Text/Documents (e.g. .txt, .doc, .docx, .pdf)'
+          : ''
+    : '';
+
   useEffect(() => {
     const userSession = localStorage.getItem('user');
     if (!userSession) {
-      localStorage.setItem('redirectAfterLogin', JSON.stringify({
-        path: '/images',
-        state: location.state
-      }));
+      localStorage.setItem(
+        'redirectAfterLogin',
+        JSON.stringify({
+          path: '/images',
+          state: location.state
+        })
+      );
       navigate('/signin');
       return;
     }
@@ -57,14 +87,42 @@ export default function ProjectImageHome() {
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    if (threeDMode) {
+    if (projectMode) {
+      let allowedExtensions = [];
+      if (projectCategory === 'Image Annotation') {
+        allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+      } else if (projectCategory === 'Video Annotation') {
+        allowedExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm'];
+      } else if (projectCategory === 'Text Annotation') {
+        allowedExtensions = ['.txt', '.doc', '.docx', '.pdf'];
+      }
+      const validFiles = selectedFiles.filter(file => {
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        return allowedExtensions.includes(extension);
+      });
+      if (validFiles.length !== selectedFiles.length) {
+        alert(
+          `Only ${projectCategory === 'Image Annotation'
+            ? 'image'
+            : projectCategory === 'Video Annotation'
+              ? 'video'
+              : 'text/document'} files are allowed in ${projectCategory.toLowerCase()} mode (${allowedExtensions.join(
+                ', '
+              )})`
+        );
+        if (validFiles.length === 0) return;
+      }
+      setFiles(validFiles);
+    } else if (threeDMode) {
       const allowed3DFormats = ['.obj', '.glb', '.gltf', '.ply', '.stl', '.3ds', '.fbx'];
       const valid3DFiles = selectedFiles.filter(file => {
         const extension = '.' + file.name.split('.').pop().toLowerCase();
         return allowed3DFormats.includes(extension);
       });
       if (valid3DFiles.length !== selectedFiles.length) {
-        alert('Only 3D model files are allowed in 3D annotation mode (.obj, .glb, .gltf, .ply, .stl, .3ds, .fbx)');
+        alert(
+          'Only 3D model files are allowed in 3D annotation mode (.obj, .glb, .gltf, .ply, .stl, .3ds, .fbx)'
+        );
         if (valid3DFiles.length === 0) return;
       }
       setFiles(valid3DFiles);
@@ -74,8 +132,36 @@ export default function ProjectImageHome() {
   };
 
   const handleFolderUpload = async (e) => {
-    const selectedFiles = Array.from(e.target.files);
+    let selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 0) return;
+
+    if (projectMode) {
+      let allowedExtensions = [];
+      if (projectCategory === 'Image Annotation') {
+        allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+      } else if (projectCategory === 'Video Annotation') {
+        allowedExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm'];
+      } else if (projectCategory === 'Text Annotation') {
+        allowedExtensions = ['.txt', '.doc', '.docx', '.pdf'];
+      }
+      const validFiles = selectedFiles.filter(file => {
+        const extension = '.' + file.name.split('.').pop().toLowerCase();
+        return allowedExtensions.includes(extension);
+      });
+      if (validFiles.length !== selectedFiles.length) {
+        alert(
+          `Only ${projectCategory === 'Image Annotation'
+            ? 'image'
+            : projectCategory === 'Video Annotation'
+              ? 'video'
+              : 'text/document'} files are allowed in ${projectCategory.toLowerCase()} mode (${allowedExtensions.join(
+                ', '
+              )})`
+        );
+        if (validFiles.length === 0) return;
+      }
+      selectedFiles = validFiles;
+    }
 
     // For preview, only show a few files from the root level
     const rootFolderName = selectedFiles[0].webkitRelativePath.split('/')[0];
@@ -119,7 +205,6 @@ export default function ProjectImageHome() {
     }
     const newLabel = { name: labelName.trim(), color: labelColor };
     const updatedLabels = [...labelClasses, newLabel];
-    // (If in task mode, update existing task labels; in project mode, skip this extra update)
     if (folderData?.taskId) {
       try {
         const updateLabelsRes = await fetch(`http://localhost:4000/api/tasks/${folderData.taskId}/labels`, {
@@ -216,9 +301,13 @@ export default function ProjectImageHome() {
       }
       const uploadData = await uploadRes.json();
       const userSession = JSON.parse(localStorage.getItem('user'));
-      const taskType = segmentationMode ? 'segmentation' :
-        classificationMode ? 'classification' :
-          threeDMode ? '3dannotation' : 'detection';
+      const taskType = segmentationMode
+        ? 'segmentation'
+        : classificationMode
+          ? 'classification'
+          : threeDMode
+            ? '3dannotation'
+            : 'detection';
       const taskRes = await fetch('http://localhost:4000/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -256,13 +345,11 @@ export default function ProjectImageHome() {
   };
 
   // Function for project mode
-  // Function for project mode
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
       alert('Enter a project name');
       return;
     }
-    // Check for duplicate project name before proceeding
     try {
       const projectsRes = await fetch('http://localhost:4000/api/projects');
       if (projectsRes.ok) {
@@ -279,7 +366,7 @@ export default function ProjectImageHome() {
       console.error('Error checking for duplicates:', err);
     }
     if (!files.length) {
-      alert('Select images first');
+      alert('Select files first');
       return;
     }
     if (!labelClasses.length) {
@@ -291,13 +378,10 @@ export default function ProjectImageHome() {
       formData.append('projectName', projectName);
       formData.append('labelClasses', JSON.stringify(labelClasses));
 
-      // Add files with their webkitRelativePath information
       files.forEach(file => {
-        // Save the webkitRelativePath for each file
         if (file.webkitRelativePath) {
           formData.append('filePaths', file.webkitRelativePath);
         } else {
-          // For regular file uploads without folder structure
           formData.append('filePaths', file.name);
         }
         formData.append('files', file);
@@ -334,7 +418,6 @@ export default function ProjectImageHome() {
       const projectData = await projectRes.json();
       setFolderData({ ...uploadData, projectId: projectData.projectId });
       alert('Project created successfully!');
-      // Redirect to projects page after creation
       navigate('/projects');
     } catch (err) {
       console.error('Error:', err);
@@ -359,46 +442,148 @@ export default function ProjectImageHome() {
               />
             </div>
             <div className="form-area">
-              <label>Project Type</label>
+              <label>Project Category</label>
               <div className="radio-group">
                 <label>
                   <input
                     type="radio"
-                    value="Image Detection"
-                    checked={projectType === 'Image Detection'}
-                    onChange={(e) => setProjectType(e.target.value)}
+                    value="Image Annotation"
+                    checked={projectCategory === 'Image Annotation'}
+                    onChange={(e) => {
+                      setProjectCategory(e.target.value);
+                      setProjectType('image detection');
+                    }}
                   />
-                  Image Detection
+                  Image Annotation
                 </label>
                 <label>
                   <input
                     type="radio"
-                    value="Image Segmentation"
-                    checked={projectType === 'Image Segmentation'}
-                    onChange={(e) => setProjectType(e.target.value)}
+                    value="Video Annotation"
+                    checked={projectCategory === 'Video Annotation'}
+                    onChange={(e) => {
+                      setProjectCategory(e.target.value);
+                      setProjectType('video detection');
+                    }}
                   />
-                  Image Segmentation
+                  Video Annotation
                 </label>
                 <label>
                   <input
                     type="radio"
-                    value="Image Classification"
-                    checked={projectType === 'Image Classification'}
-                    onChange={(e) => setProjectType(e.target.value)}
+                    value="Text Annotation"
+                    checked={projectCategory === 'Text Annotation'}
+                    onChange={(e) => {
+                      setProjectCategory(e.target.value);
+                      setProjectType('Span annotation');
+                    }}
                   />
-                  Image Classification
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    value="3D Image Annotation"
-                    checked={projectType === '3D Image Annotation'}
-                    onChange={(e) => setProjectType(e.target.value)}
-                  />
-                  3D Image Annotation
+                  Text Annotation
                 </label>
               </div>
             </div>
+            {projectCategory === 'Image Annotation' && (
+              <div className="form-area">
+                <label>Image Annotation Options</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      value="image detection"
+                      checked={projectType === 'image detection'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Image Detection
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      value="image segmentation"
+                      checked={projectType === 'image segmentation'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Image Segmentation
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      value="image classification"
+                      checked={projectType === 'image classification'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Image Classification
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      value="3d image annotation"
+                      checked={projectType === '3d image annotation'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    3D Image Annotation
+                  </label>
+                </div>
+              </div>
+            )}
+            {projectCategory === 'Video Annotation' && (
+              <div className="form-area">
+                <label>Video Annotation Options</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      value="video detection"
+                      checked={projectType === 'video detection'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Video Detection
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      value="video segmentation"
+                      checked={projectType === 'video segmentation'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Video Segmentation
+                  </label>
+                </div>
+              </div>
+            )}
+            {projectCategory === 'Text Annotation' && (
+              <div className="form-area">
+                <label>Text Annotation Options</label>
+                <div className="radio-group">
+                  <label>
+                    <input
+                      type="radio"
+                      value="Span annotation"
+                      checked={projectType === 'Span annotation'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Span Annotation
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      value="relation annotation"
+                      checked={projectType === 'relation annotation'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Relation Annotation
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      value="document-level annotation"
+                      checked={projectType === 'document-level annotation'}
+                      onChange={(e) => setProjectType(e.target.value)}
+                    />
+                    Document-Level Annotation
+                  </label>
+                </div>
+              </div>
+            )}
             <div className="labels-section">
               <h3>Label Classes</h3>
               <div className="label-form">
@@ -425,16 +610,13 @@ export default function ProjectImageHome() {
                 ))}
               </ul>
             </div>
-            {/* BEGIN: Changed area for 'upload files' & 'upload folders' */}
             <div className="form-area">
-              <label>Select Images or Folder</label>
+              <label>Select Files or Folder</label>
               <div className="upload-controls">
-                {/* 'Upload Files' label triggers hidden file input below */}
                 <label htmlFor="proj-file-input" className="upload-files-button">
                   Upload Files
                 </label>
                 <span className="divider"></span>
-                {/* 'Upload Folders' button (does nothing new in logic; just UI) */}
                 <label htmlFor="folder-input" className="upload-folders-button">
                   Upload Folders
                 </label>
@@ -442,21 +624,22 @@ export default function ProjectImageHome() {
                   id="proj-file-input"
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept={allowedAccept}
                   onChange={handleFileChange}
-                  style={{ display: 'none' }} // hide default input UI
+                  style={{ display: 'none' }}
                 />
                 <input
                   id="folder-input"
                   type="file"
                   webkitdirectory="true"
                   directory="true"
+                  accept={allowedAccept}
                   onChange={handleFolderUpload}
                   style={{ display: 'none' }}
                 />
               </div>
+              <p className="file-hint">{allowedFileTypesHint}</p>
             </div>
-            {/* END: Changed area */}
             {previews.length > 0 && (
               <div className="preview-grid">
                 {previews.map((p, i) => (

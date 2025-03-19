@@ -15,6 +15,9 @@ import TaskInfo from './pages/TaskInfo';
 import Projects from './pages/Projects';
 import ProjectInfo from './pages/ProjectInfo';
 import Jobs from './pages/Jobs';
+import Span from './pages/TextAnnotation/Span';
+import Relation from './pages/TextAnnotation/Relation';
+
 
 function App() {
   return (
@@ -34,6 +37,8 @@ function App() {
       <Route path="/tasks" element={<Tasks />} />
       <Route path="/task-info/:taskId" element={<TaskInfo />} />
       <Route path="/jobs" element={<Jobs />} />
+      <Route path="/span" element={<Span />} />
+      <Route path="/relation" element={<Relation />} />
     </Routes>
   );
 }

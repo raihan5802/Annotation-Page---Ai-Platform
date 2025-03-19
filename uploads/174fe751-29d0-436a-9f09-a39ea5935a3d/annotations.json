@@ -1,0 +1,47 @@
+{
+  "taskName": "relation text 1",
+  "labelClasses": [
+    {
+      "name": "f",
+      "color": "#e6194B"
+    },
+    {
+      "name": "r",
+      "color": "#ff0000"
+    },
+    {
+      "name": "t",
+      "color": "#3cb44b"
+    }
+  ],
+  "annotations": {
+    "http://localhost:4000/uploads/174fe751-29d0-436a-9f09-a39ea5935a3d/roots/1.txt": {
+      "text": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
+      "entities": [
+        {
+          "id": 1,
+          "type": "Entity",
+          "label": "f",
+          "start": 0,
+          "end": 11
+        },
+        {
+          "id": 2,
+          "type": "Entity",
+          "label": "f",
+          "start": 14,
+          "end": 27
+        }
+      ],
+      "relations": [
+        {
+          "type": "Relation",
+          "label": "f-to-f",
+          "from": 1,
+          "to": 2
+        }
+      ]
+    }
+  },
+  "lastUpdated": "2025-03-19T09:10:16.458Z"
+}

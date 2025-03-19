@@ -1,0 +1,92 @@
+{
+  "taskName": "span test 1",
+  "labelClasses": [
+    {
+      "name": "t1",
+      "color": "#e6194B"
+    },
+    {
+      "name": "t2",
+      "color": "#3cb44b"
+    }
+  ],
+  "annotations": {
+    "http://localhost:4000/uploads/bd307acd-0f94-410e-a5d8-cbae30d2b457/roots/1.txt": [
+      {
+        "type": "NER",
+        "label": "t1",
+        "start": 0,
+        "end": 11,
+        "opacity": 0.55
+      },
+      {
+        "type": "NER",
+        "label": "t2",
+        "start": 146,
+        "end": 151,
+        "opacity": 0.38
+      },
+      {
+        "type": "NER",
+        "label": "t2",
+        "start": 393,
+        "end": 398,
+        "opacity": 1
+      },
+      {
+        "type": "NER",
+        "label": "t1",
+        "start": 446,
+        "end": 457,
+        "opacity": 0.45
+      },
+      {
+        "type": "NER",
+        "label": "t1",
+        "start": 562,
+        "end": 573,
+        "opacity": 1
+      },
+      {
+        "type": "NER",
+        "label": "t1",
+        "start": 75,
+        "end": 86,
+        "opacity": 1
+      }
+    ],
+    "http://localhost:4000/uploads/bd307acd-0f94-410e-a5d8-cbae30d2b457/roots/2.txt": [
+      {
+        "type": "sentiment",
+        "label": "negative",
+        "start": 52,
+        "end": 62
+      },
+      {
+        "type": "sentiment",
+        "label": "positive",
+        "start": 311,
+        "end": 318
+      }
+    ],
+    "http://localhost:4000/uploads/bd307acd-0f94-410e-a5d8-cbae30d2b457/roots/3.txt": [
+      {
+        "type": "Highlight",
+        "start": 0,
+        "end": 26,
+        "opacity": 0.55
+      },
+      {
+        "type": "Highlight",
+        "start": 266,
+        "end": 286
+      },
+      {
+        "type": "Highlight",
+        "start": 778,
+        "end": 798
+      }
+    ]
+  },
+  "lastUpdated": "2025-03-19T07:52:53.186Z"
+}

@@ -60,6 +60,18 @@ export default function TasksImageHome() {
                     options = ["all", "single class", "multi class"];
                 } else if (normalizedType === "3d image annotation") {
                     options = ["all", "cuboid"];
+                } else if (normalizedType === "video detection") {
+                    options = ["all", "bounding box", "polygon", "polyline", "points", "circle"];
+                } else if (normalizedType === "video segmentation") {
+                    options = ["all", "polygon", "instance segmentation", "semantics segmentation", "panoptic segmentation"];
+                } else if (normalizedType === "video segmentation") {
+                    options = ["all", "polygon", "instance segmentation", "semantics segmentation", "panoptic segmentation"];
+                } else if (normalizedType === "span annotation") {
+                    options = ["all", "normal entity recognition (NER)", "sentiment annotation", "highlighting"];
+                } else if (normalizedType === "relation annotation") {
+                    options = ["relation annotation"];
+                } else if (normalizedType === "document-level annotation") {
+                    options = ["all", "text classification", "sentiment analysis"];
                 }
                 setAnnotationOptions(options);
                 setAnnotationType("all");

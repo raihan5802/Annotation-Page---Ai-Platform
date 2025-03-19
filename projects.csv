@@ -2,3 +2,6 @@ project_id,user_id,project_name,project_type,label_classes,folder_path,created_a
 fdd1530b-0448-4c46-b8ee-3494a7a949c4,1740077374191,p1,Image Detection,[{"name":"l1"|"color":"#e6194B"}|{"name":"l22"|"color":"#f032e6"}],uploads/0c8c8990-844f-4c98-9a21-30fe04ec7fc3,2025-03-16T16:59:12.501Z
 973217af-e075-4400-b6ff-21fe1bafcdae,1740077374191,seg proj,Image Segmentation,[{"name":"s1"|"color":"#e6194B"}|{"name":"s2"|"color":"#ff0000"}],uploads/c23f0db3-c364-4507-91d4-d1ec0d97d8a7,2025-03-17T18:44:35.406Z
 9586bc83-261a-4202-8ae8-edea0cbf4481,1740077374191,class proj,Image Classification,[{"name":"c1"|"color":"#e6194B"}|{"name":"c2"|"color":"#ffe119"}],uploads/46f88332-bc7b-4426-b07e-24b0f37c3896,2025-03-17T19:02:49.771Z
+53014e70-fb8d-4f04-b6be-e07b695ef36f,1740077374191,text 1 test,Span annotation,[{"name":"t1"|"color":"#e6194B"}|{"name":"t2"|"color":"#3cb44b"}],uploads/bd307acd-0f94-410e-a5d8-cbae30d2b457,2025-03-18T20:43:02.080Z
+5b1bd1c2-2c7b-44d8-a384-41eb56eaef8c,1740077374191,text 2 test,relation annotation,[{"name":"f"|"color":"#e6194B"}|{"name":"r"|"color":"#ff0000"}|{"name":"t"|"color":"#3cb44b"}],uploads/174fe751-29d0-436a-9f09-a39ea5935a3d,2025-03-18T20:56:39.852Z
+451ff9f4-c76a-40e1-b8be-531c4b6e1acf,1740077374191,text 3 test,document-level annotation,[{"name":"v"|"color":"#e6194B"}],uploads/5bb234fd-0826-4b90-917a-0c7677125cdc,2025-03-18T20:57:30.496Z

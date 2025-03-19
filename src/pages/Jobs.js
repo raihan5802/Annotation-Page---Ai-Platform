@@ -91,6 +91,10 @@ export default function Jobs() {
                 redirectPath = '/classification';
             } else if (projType === '3d image annotation') {
                 redirectPath = '/3d';
+            } else if (projType === 'span annotation') {
+                redirectPath = '/span';
+            } else if (projType === 'relation annotation') {
+                redirectPath = '/relation';
             }
         }
         navigate(redirectPath, { state: { taskId: job.task_id } });

@@ -182,7 +182,6 @@
   cursor: not-allowed;
 }
 
-/* ---- Added styles for the new 'Upload Files' / 'Upload Folders' controls ---- */
 .upload-controls {
   display: flex;
   align-items: center;
@@ -210,4 +209,10 @@
   width: 1px;
   height: 24px;
   background: var(--border-color);
+}
+
+.file-hint {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  margin-top: 8px;
 }

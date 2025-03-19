@@ -500,7 +500,7 @@ app.get('/api/jobs', (req, res) => {
             count += countImagesInDir(fullPath);
           } else {
             const ext = path.extname(item).toLowerCase();
-            if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext)) {
+            if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.txt'].includes(ext)) {
               count++;
             }
           }
